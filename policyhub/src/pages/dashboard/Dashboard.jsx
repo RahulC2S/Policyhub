@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { FiHome, FiFileText, FiClock, FiBell, FiSettings } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import API from '../../services/api';
 import DashboardSidebar from '../../components/feature-specific/dashboard/DashboardSidebar';
@@ -7,11 +8,11 @@ import PolicyTable from '../../components/common/PolicyTable';
 import PolicyModal from '../../components/common/PolicyModal';
 
 const sidebarItems = [
-  'Dashboard',
-  'My Policies',
-  'History',
-  'Notifications',
-  'Settings',
+  { key: 'Dashboard', label: 'Dashboard', icon: FiHome },
+  { key: 'My Policies', label: 'Policies', icon: FiFileText },
+  { key: 'History', label: 'History', icon: FiClock },
+  { key: 'Notifications', label: 'Notifications', icon: FiBell },
+  { key: 'Settings', label: 'Settings', icon: FiSettings },
 ];
 
 const categories = ['All', 'HR', 'IT', 'Compliance'];
@@ -21,9 +22,13 @@ function Dashboard({ onLogout }) {
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSidebar, setActiveSidebar] = useState('Dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+
+  const handleToggleSidebar = () => {
+    setSidebarOpen((prev) => !prev);
+  };
   const [searchText, setSearchText] = useState('');
   const { user, logout } = useAuth();
   const [modalPolicy, setModalPolicy] = useState(null);
@@ -144,22 +149,20 @@ function Dashboard({ onLogout }) {
   return (
     <div
       className={`dashboard-shell ${
-        sidebarOpen ? 'sidebar-open' : 'sidebar-closed'
+        sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'
       }`}
     >
-      <div
-        className="sidebar-hover-zone"
-        onMouseEnter={() => setSidebarOpen(true)}
-      />
-
       <DashboardSidebar
         sidebarItems={sidebarItems}
         activeSidebar={activeSidebar}
         sidebarOpen={sidebarOpen}
         onSelectItem={setActiveSidebar}
-        onCloseSidebar={() => setSidebarOpen(false)}
-        onMouseEnter={() => setSidebarOpen(true)}
-        onMouseLeave={() => setSidebarOpen(false)}
+        onToggleSidebar={handleToggleSidebar}
+      />
+
+      <div
+        className={`dashboard-overlay ${sidebarOpen ? 'visible' : ''}`}
+        onClick={() => setSidebarOpen(false)}
       />
 
       <div className="dashboard-main">
@@ -175,7 +178,17 @@ function Dashboard({ onLogout }) {
               <small>Employee</small>
             </div>
 
-            <div className="avatar">R</div>
+            <div className="avatar">
+              {(
+                (user?.fullName || user?.name || user?.preferredUsername || user?.email || 'Employee')
+                  .split(' ')
+                  .filter(Boolean)
+                  .map((part) => part[0])
+                  .slice(0, 2)
+                  .join('')
+                  .toUpperCase()
+              )}
+            </div>
             <button
               className="logout-btn dashboard-logout"
               onClick={logout}

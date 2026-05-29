@@ -1,44 +1,51 @@
 import React from 'react';
+import { FiMenu } from 'react-icons/fi';
 
 const DashboardSidebar = ({
   sidebarItems,
   activeSidebar,
   sidebarOpen,
   onSelectItem,
-  onCloseSidebar,
-  onMouseEnter,
-  onMouseLeave,
+  onToggleSidebar,
 }) => {
   return (
-    <aside
-      className={`dashboard-sidebar ${sidebarOpen ? 'open' : 'closed'}`}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      <div className="sidebar-brand">
-        <div className="brand-icon">P</div>
-        <div>
-          <h2>Policy Portal</h2>
-          <p>Employee Center</p>
+    <aside className={`dashboard-sidebar ${sidebarOpen ? 'expanded' : 'collapsed'}`}>
+      <div className="sidebar-header">
+        <div className="sidebar-brand">
+          <div className="brand-icon">P</div>
+          <div className="brand-content">
+            <h2>Policy Portal</h2>
+            <p>Employee Center</p>
+          </div>
         </div>
+
+        <button
+          type="button"
+          className="sidebar-toggle-btn"
+          onClick={onToggleSidebar}
+          aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+        >
+          <FiMenu />
+        </button>
       </div>
 
-      <button className="close-sidebar-btn" onClick={onCloseSidebar}>
-        Close
-      </button>
-
       <nav className="sidebar-nav">
-        {sidebarItems.map((item) => (
-          <button
-            key={item}
-            className={
-              item === activeSidebar ? 'sidebar-item active' : 'sidebar-item'
-            }
-            onClick={() => onSelectItem(item)}
-          >
-            {item}
-          </button>
-        ))}
+        {sidebarItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.key}
+              className={`sidebar-item ${item.key === activeSidebar ? 'active' : ''}`}
+              onClick={() => onSelectItem(item.key)}
+              type="button"
+            >
+              <span className="sidebar-icon">
+                {Icon && <Icon />}
+              </span>
+              <span className="sidebar-text">{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
     </aside>
   );
