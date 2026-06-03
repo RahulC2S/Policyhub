@@ -1,19 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiHome, FiFileText, FiClock, FiBell, FiSettings } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import API from '../../services/api';
-import DashboardSidebar from '../../components/feature-specific/dashboard/DashboardSidebar';
 import SummaryCards from '../../components/feature-specific/dashboard/SummaryCards';
-import PolicyTable from '../../components/common/PolicyTable';
-import PolicyModal from '../../components/common/PolicyModal';
+import AdminDashboard from '../admin/AdminDashboard';
 
-const sidebarItems = [
-  { key: 'Dashboard', label: 'Dashboard', icon: FiHome },
-  { key: 'My Policies', label: 'Policies', icon: FiFileText },
-  { key: 'History', label: 'History', icon: FiClock },
-  { key: 'Notifications', label: 'Notifications', icon: FiBell },
-  { key: 'Settings', label: 'Settings', icon: FiSettings },
-];
+// Sidebar is global; per-page sidebar items removed to avoid duplication.
 
 const categories = ['All', 'HR', 'IT', 'Compliance'];
 const statuses = ['All', 'Pending', 'Signed'];
@@ -21,24 +12,14 @@ const statuses = ['All', 'Pending', 'Signed'];
 function Dashboard({ onLogout }) {
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeSidebar, setActiveSidebar] = useState('Dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-
-  const handleToggleSidebar = () => {
-    setSidebarOpen((prev) => !prev);
-  };
-  const [searchText, setSearchText] = useState('');
-  const { user, logout } = useAuth();
-  const [modalPolicy, setModalPolicy] = useState(null);
-  const [agreeChecked, setAgreeChecked] = useState(false);
-  const [signing, setSigning] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.roles?.some((role) =>
+    ['HRAdmin', 'SuperAdmin'].includes(role)
+  );
 
   useEffect(() => {
     loadPolicies();
   }, []);
-
   const loadPolicies = async () => {
     try {
       const res = await API.get('/Policies');
@@ -68,20 +49,6 @@ function Dashboard({ onLogout }) {
     }
   };
 
-  const filteredPolicies = useMemo(() => {
-    return policies.filter((policy) => {
-      const matchesCategory =
-        categoryFilter === 'All' || policy.category === categoryFilter;
-      const matchesStatus =
-        statusFilter === 'All' || policy.status === statusFilter;
-      const matchesSearch = policy.name
-        .toLowerCase()
-        .includes(searchText.toLowerCase());
-
-      return matchesCategory && matchesStatus && matchesSearch;
-    });
-  }, [policies, categoryFilter, statusFilter, searchText]);
-
   const summary = useMemo(() => {
     const pending = policies.filter(
       (policy) => policy.status === 'Pending'
@@ -101,167 +68,34 @@ function Dashboard({ onLogout }) {
     };
   }, [policies]);
 
-  const openPolicy = (policy) => {
-    setModalPolicy(policy);
-    setAgreeChecked(false);
-  };
-
-  const closeModal = () => {
-    setModalPolicy(null);
-    setAgreeChecked(false);
-    setSigning(false);
-  };
-
-  const handleSign = async () => {
-    if (!modalPolicy || !agreeChecked) return;
-
-    try {
-      setSigning(true);
-      await API.post('/PolicyAcknowledgments', {
-        assignmentId: 1,
-        userId: user?.userId,
-        status: 'Signed',
-        signedAt: new Date().toISOString(),
-        consentText: 'I agree to the policy terms.',
-      });
-
-      setPolicies((current) =>
-        current.map((policy) =>
-          policy.id === modalPolicy.id
-            ? {
-                ...policy,
-                status: 'Signed',
-              }
-            : policy
-        )
-      );
-
-      alert('Policy signed successfully');
-      setModalPolicy(null);
-      setSigning(false);
-    } catch (err) {
-      console.log(err);
-      alert('Failed to sign policy');
-      setSigning(false);
-    }
-  };
+  if (isAdmin) {
+    return <AdminDashboard />;
+  }
 
   return (
-    <div
-      className={`dashboard-shell ${
-        sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'
-      }`}
-    >
-      <DashboardSidebar
-        sidebarItems={sidebarItems}
-        activeSidebar={activeSidebar}
-        sidebarOpen={sidebarOpen}
-        onSelectItem={setActiveSidebar}
-        onToggleSidebar={handleToggleSidebar}
-      />
-
-      <div
-        className={`dashboard-overlay ${sidebarOpen ? 'visible' : ''}`}
-        onClick={() => setSidebarOpen(false)}
-      />
-
-      <div className="dashboard-main">
-        <div className="dashboard-header">
-          <div>
-            <h1>PolicyHub Dashboard</h1>
-            <p>Internal policy acknowledgment portal.</p>
-          </div>
-
-          <div className="user-card">
-            <div className="user-details">
-              <span>{user?.fullName || 'Employee'}</span>
-              <small>Employee</small>
-            </div>
-
-            <div className="avatar">
-              {(
-                (user?.fullName || user?.name || user?.preferredUsername || user?.email || 'Employee')
-                  .split(' ')
-                  .filter(Boolean)
-                  .map((part) => part[0])
-                  .slice(0, 2)
-                  .join('')
-                  .toUpperCase()
-              )}
-            </div>
-            <button
-              className="logout-btn dashboard-logout"
-              onClick={logout}
-            >
-              Logout
-            </button>
-          </div>
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <h1>PolicyHub Dashboard</h1>
+          <p>Employee summary and status overview for your assigned policies.</p>
         </div>
 
-        <SummaryCards summary={summary} />
-
-        <section className="filter-area">
-          <div className="filter-group">
-            <label>Category</label>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
+        <div className="page-meta">
+          <div className="user-badge small">
+            <span>{user?.fullName || 'Employee'}</span>
+            <small>{user?.roles?.includes('SuperAdmin') ? 'SuperAdmin' : user?.roles?.includes('HRAdmin') ? 'HR Admin' : 'Employee'}</small>
           </div>
-
-          <div className="filter-group">
-            <label>Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              {statuses.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-search">
-            <label>Search</label>
-            <input
-              type="text"
-              placeholder="Search policy"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-          </div>
-        </section>
-
-        <section className="table-panel">
-          <div className="table-panel-header">
-            <h2>Assigned Policies</h2>
-            <span>{filteredPolicies.length} items</span>
-          </div>
-
-          <PolicyTable
-            policies={filteredPolicies}
-            loading={loading}
-            onViewPolicy={openPolicy}
-          />
-        </section>
+        </div>
       </div>
 
-      <PolicyModal
-        modalPolicy={modalPolicy}
-        agreeChecked={agreeChecked}
-        onAgreeChange={setAgreeChecked}
-        onClose={closeModal}
-        onSign={handleSign}
-        signing={signing}
-      />
+      <SummaryCards summary={summary} />
+
+      <div className="card-panel" style={{ marginTop: '1.5rem' }}>
+        <div className="section-title">What to do next</div>
+        <p style={{ margin: 0, color: '#6b7280' }}>
+          Use the Policies tab to view assigned documents, filter by status, and sign any pending policies.
+        </p>
+      </div>
     </div>
   );
 }
