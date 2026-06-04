@@ -1,4 +1,12 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from "react";
+import API from "../../services/api";
+import { Document, Page, pdfjs } from "react-pdf";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.js";
+
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const PolicyModal = ({
   modalPolicy,
@@ -8,157 +16,382 @@ const PolicyModal = ({
   onSign,
   signing,
 }) => {
+  const [blobSrc, setBlobSrc] = useState(null);
+  const [numPages, setNumPages] = useState(0);
+  const [zoom, setZoom] = useState(1.5);
+
+  const [accepted, setAccepted] = useState(false);
+  const [canAccept, setCanAccept] = useState(false);
+
+
+
+  const containerRef = useRef(null);
+
+  // Load PDF
+  useEffect(() => {
+    let objectUrl = null;
+
+    const loadPdf = async () => {
+      if (!modalPolicy) return;
+
+      setBlobSrc(null);
+      setNumPages(0);
+      setAccepted(false);
+      setCanAccept(false);
+
+      try {
+        if (modalPolicy.assignmentId) {
+          const resp = await API.get(
+            `/PolicyAssignments/${modalPolicy.assignmentId}/pdf`,
+            {
+              responseType: "arraybuffer",
+            }
+          );
+
+          const blob = new Blob([resp.data], {
+            type: "application/pdf",
+          });
+
+          objectUrl = URL.createObjectURL(blob);
+          setBlobSrc(objectUrl);
+        } else if (modalPolicy.blobUrl) {
+          setBlobSrc(modalPolicy.blobUrl);
+        }
+      } catch (err) {
+        console.error("Failed to load PDF", err);
+      }
+    };
+
+    loadPdf();
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [modalPolicy]);
+
+  // Reset scroll every time modal/pdf changes
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (container) {
+      container.scrollTop = 0;
+    }
+
+    setAccepted(false);
+    setCanAccept(false);
+
+    onAgreeChange?.(false);
+
+    
+  }, [blobSrc]);
+
+  // PDF loaded
+  const onLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+
+    setTimeout(() => {
+      const container = containerRef.current;
+
+      if (!container) return;
+
+      container.scrollTop = 0;
+
+      const handleScroll = () => {
+        const reachedBottom =
+          Math.ceil(
+            container.scrollTop + container.clientHeight
+          ) >= container.scrollHeight - 5;
+
+        setCanAccept(reachedBottom);
+
+        if (!reachedBottom) {
+          setAccepted(false);
+          onAgreeChange?.(false);
+        }
+      };
+
+      container.addEventListener("scroll", handleScroll);
+
+      handleScroll();
+    }, 500);
+  };
+
+  // Scroll validation
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (!container) return;
+
+    const handleScroll = () => {
+      const container = containerRef.current;
+
+      if (!container) return;
+
+      const reachedBottom =
+        Math.ceil(container.scrollTop + container.clientHeight) >=
+        container.scrollHeight - 5;
+
+      if (reachedBottom) {
+        setCanAccept(true);
+      } else {
+        setCanAccept(false);
+        setAccepted(false);
+        onAgreeChange?.(false);
+      }
+    };
+    
+    container.addEventListener("scroll", handleScroll);
+
+    handleScroll();
+
+    return () => {
+      container.removeEventListener(
+        "scroll",
+        handleScroll
+      );
+    };
+  }, [accepted]);
+
+  useEffect(() => {
+    if (!canAccept) {
+      setAccepted(false);
+    }
+  }, [canAccept]);
+
   if (!modalPolicy) return null;
 
   return (
     <div
-      className="modal-overlay"
       onClick={onClose}
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        background: 'rgba(0,0,0,0.6)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.6)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
         zIndex: 9999,
-        padding: '20px',
       }}
     >
       <div
-        className="modal-card"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
-          width: '95%',
-          maxWidth: '1700px',
-          height: '95vh',
-          borderRadius: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          width: "95%",
+          maxWidth: "1600px",
+          height: "95vh",
+          background: "#fff",
+          borderRadius: "16px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
+        {/* Header */}
         <div
           style={{
-            padding: '20px',
-            borderBottom: '1px solid #e5e7eb',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: '#f8fafc',
+            padding: "20px",
+            borderBottom: "1px solid #e5e7eb",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
           <div>
-            <h2 style={{ margin: 0 }}>{modalPolicy.name}</h2>
-            <p style={{ margin: '5px 0 0 0', color: '#64748b' }}>
-              {modalPolicy.category}
-            </p>
+            <h2>{modalPolicy.name}</h2>
+            <p>{modalPolicy.category}</p>
           </div>
 
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+            }}
+          >
           <button
-            onClick={onClose}
+            onClick={() =>
+              setZoom((z) =>
+                Math.max(0.75, z - 0.25)
+              )
+            }
             style={{
-              background: '#ef4444',
-              color: 'white',
-              border: 'none',
-              padding: '10px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
+              background: "#2563eb",
+              color: "white",
+              border: "none",
+              padding: "8px 12px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "bold",
             }}
           >
-            Close
+            −
           </button>
-        </div>
 
-        <div
-          style={{
-            flex: 1,
-            padding: '20px',
-            overflow: 'hidden',
-            background: '#e2e8f0',
-          }}
-        >
-          <iframe
-            src={modalPolicy.blobUrl}
-            title="Policy PDF"
-            width="100%"
-            height="100%"
-            style={{
-              border: 'none',
-              borderRadius: '10px',
-              background: 'white',
-            }}
-          />
-        </div>
+            <span>
+              {Math.round(zoom * 100)}%
+            </span>
 
-        <div
-          style={{
-            padding: '20px',
-            borderTop: '1px solid #e5e7eb',
-            background: '#f8fafc',
-          }}
-        >
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              marginBottom: '20px',
-              fontWeight: '500',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={agreeChecked}
-              onChange={(e) => onAgreeChange(e.target.checked)}
-              style={{
-                width: '20px',
-                height: '20px',
-                minWidth: '20px',
-                minHeight: '20px',
-                accentColor: '#2563eb',
-                border: '1px solid #94a3b8',
-                borderRadius: '5px',
-                cursor: 'pointer',
-              }}
-            />
-            I agree to the policy terms and conditions.
-          </label>
-
-          <div style={{ display: 'flex', gap: '10px' }}>
             <button
-              disabled={!agreeChecked || signing}
-              onClick={onSign}
+              onClick={() =>
+                setZoom((z) =>
+                  Math.min(3, z + 0.25)
+                )
+              }
               style={{
-                background: agreeChecked ? '#2563eb' : '#94a3b8',
-                color: 'white',
-                border: 'none',
-                padding: '2px 20px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "bold",
               }}
             >
-              {signing ? 'Signing...' : 'Proceed to Sign'}
+              +
             </button>
 
             <button
               onClick={onClose}
               style={{
-                background: '#e2e8f0',
-                border: 'none',
-                padding: '12px 20px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
+                background: "#ef4444",
+                color: "white",
+                border: "none",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "600",
               }}
             >
-              Cancel
+              Close
+            </button>
+          </div>
+        </div>
+
+        {/* PDF Viewer */}
+        <div
+          ref={containerRef}
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            background: "#f1f5f9",
+            padding: "20px",
+          }}
+        >
+          {blobSrc && (
+            <Document
+              file={blobSrc}
+              onLoadSuccess={onLoadSuccess}
+              loading="Loading PDF..."
+            >
+              {Array.from(
+                new Array(numPages),
+                (_, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    <Page
+                      pageNumber={index + 1}
+                      scale={zoom}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                      devicePixelRatio={window.devicePixelRatio || 2}
+                    />
+                  </div>
+                )
+              )}
+            </Document>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding: "20px",
+            borderTop: "1px solid #e5e7eb",
+            background: "#fff",
+          }}
+        >
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginTop: "10px",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={accepted}
+              disabled={!canAccept}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setAccepted(checked);
+                onAgreeChange?.(checked);
+              }}
+              style={{
+                width: "22px",
+                height: "22px",
+                cursor: canAccept ? "pointer" : "not-allowed",
+                accentColor: "#2563eb",
+                flexShrink: 0,
+              }}
+            />
+
+            <label
+              style={{
+                fontSize: "16px",
+                color: "#334155",
+                fontWeight: "500",
+                cursor: canAccept ? "pointer" : "default",
+              }}
+            >
+              I agree to the policy terms.
+            </label>
+          </div>
+
+          <div
+            style={{
+              marginTop: "15px",
+            }}
+          >
+            <button
+              onClick={onSign}
+              disabled={
+                !accepted ||
+                !canAccept ||
+                signing
+              }
+              style={{
+                background:
+                  !accepted ||
+                  !canAccept ||
+                  signing
+                    ? "#93c5fd"
+                    : "#2563eb",
+                color: "white",
+                border: "none",
+                padding: "12px 20px",
+                borderRadius: "8px",
+                fontWeight: "600",
+                cursor:
+                  !accepted ||
+                  !canAccept ||
+                  signing
+                    ? "not-allowed"
+                    : "pointer",
+              }}
+            >
+              {signing
+                ? "Signing..."
+                : "Proceed to Sign"}
             </button>
           </div>
         </div>

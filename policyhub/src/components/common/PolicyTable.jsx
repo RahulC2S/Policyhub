@@ -17,26 +17,34 @@ const PolicyTable = ({ policies, loading, onViewPolicy }) => {
         </tr>
       </thead>
       <tbody>
-        {policies.map((policy) => (
-          <tr key={policy.id}>
-            <td>{policy.name}</td>
-            <td>{policy.category}</td>
-            <td>{policy.version}</td>
-            <td>
-              <span className={`status-pill ${policy.status.toLowerCase()}`}>
-                {policy.status}
-              </span>
-            </td>
-            <td>
-              <button
-                className="action-btn"
-                onClick={() => onViewPolicy(policy)}
-              >
-                {policy.status === 'Pending' ? 'View & Sign' : 'View'}
-              </button>
+        {policies.length === 0 ? (
+          <tr>
+            <td colSpan="5" className="empty-state">
+              No assigned policies found.
             </td>
           </tr>
-        ))}
+        ) : (
+          policies.map((policy) => (
+            <tr key={policy.id || policy.name}>
+              <td>{policy.name}</td>
+              <td>{policy.category}</td>
+              <td>{policy.version}</td>
+              <td>
+                <span className={`status-pill ${String(policy.status || 'Pending').toLowerCase()}`}>
+                  {policy.status || 'Pending'}
+                </span>
+              </td>
+              <td>
+                <button
+                  className="action-btn"
+                  onClick={() => onViewPolicy(policy)}
+                >
+                  {policy.status === 'Pending' ? 'View & Sign' : 'View'}
+                </button>
+              </td>
+            </tr>
+          ))
+        )}
       </tbody>
     </table>
   );

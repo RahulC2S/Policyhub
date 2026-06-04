@@ -1,27 +1,64 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import API from '../../services/api';
+import PolicyTable from '../../components/common/PolicyTable';
+import PolicyModal from '../../components/common/PolicyModal';
+import PoliciesAdmin from '../admin/PoliciesAdmin';
+
+const categories = ['All', 'HR', 'IT', 'Compliance'];
+const statuses = ['All', 'Pending', 'Signed'];
 
 function Policies() {
   const [policies, setPolicies] = useState([]);
-  const [selectedPdf, setSelectedPdf] = useState('');
-  const [selectedTitle, setSelectedTitle] = useState('');
+  const [selectedPolicy, setSelectedPolicy] = useState(null);
+  const [agreeChecked, setAgreeChecked] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  useEffect(() => {
-    fetchPolicies();
-  }, []);
+  const isAdmin = user?.roles?.some((role) =>
+    ['HRAdmin', 'SuperAdmin'].includes(role)
+  );
 
-  const fetchPolicies = async () => {
+  const fetchAssignedPolicies = async () => {
+    if (!user) {
+      setPolicies([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await API.get('/Policies');
+      const [assignResponse, ackResponse] = await Promise.all([
+        API.get('/PolicyAssignments/me'),
+        API.get('/PolicyAcknowledgments/me'),
+      ]);
 
-      console.log('API RESPONSE => ', response.data);
+      const assignments = Array.isArray(assignResponse.data) ? assignResponse.data : [];
+      const acknowledgments = Array.isArray(ackResponse.data) ? ackResponse.data : [];
 
-      if (Array.isArray(response.data)) {
-        setPolicies(response.data);
-      } else {
-        setPolicies([]);
-      }
+      // Build map of signed assignments for quick lookup
+      const signedAssignmentIds = new Set(acknowledgments.map(ack => ack.assignmentId));
+
+      const mapped = assignments.map((assignment) => {
+        const policy = assignment.policy || assignment;
+        const isSigned = signedAssignmentIds.has(assignment.assignmentId);
+
+        return {
+          id: assignment.assignmentId || assignment.policyId || policy.policyId,
+          assignmentId: assignment.assignmentId,
+          name: assignment.title || policy.title || assignment.policyTitle || 'Policy',
+          category: assignment.category || policy.category || 'General',
+          version: assignment.version || policy.version || '1.0',
+          description: assignment.description || policy.description || '',
+          status: isSigned ? 'Signed' : 'Pending',
+          blobUrl: assignment.blobUrl || policy.blobUrl || policy.blobPath || '',
+        };
+      });
+
+      setPolicies(mapped);
     } catch (error) {
       console.error(error);
       setPolicies([]);
@@ -30,204 +67,147 @@ function Policies() {
     }
   };
 
-  const openPdf = (url, title) => {
-    if (!url) {
-      alert("PDF URL not found");
-      return;
-    }
+  useEffect(() => {
+    fetchAssignedPolicies();
+  }, [user]);
 
-    setSelectedPdf(url);
-    setSelectedTitle(title);
+  const filteredPolicies = useMemo(() => {
+    return policies.filter((policy) => {
+      const matchesCategory =
+        categoryFilter === 'All' || policy.category === categoryFilter;
+      const matchesStatus =
+        statusFilter === 'All' || policy.status === statusFilter;
+      const matchesSearch = policy.name
+        .toLowerCase()
+        .includes(searchText.toLowerCase());
+
+      return matchesCategory && matchesStatus && matchesSearch;
+    });
+  }, [policies, categoryFilter, statusFilter, searchText]);
+
+  if (isAdmin) {
+    return <PoliciesAdmin />;
+  }
+
+  const openPolicy = (policy) => {
+    setSelectedPolicy(policy);
+    setAgreeChecked(false);
+  };
+
+  const closeModal = () => {
+    setSelectedPolicy(null);
+    setAgreeChecked(false);
+    setSigning(false);
+  };
+
+  const handleSign = async () => {
+    if (!selectedPolicy || !agreeChecked) return;
+
+    try {
+      setSigning(true);
+      await API.post('/PolicyAcknowledgments/sign', {
+        assignmentId: selectedPolicy.assignmentId || selectedPolicy.id || 1,
+        consentText: 'I agree to the policy terms.',
+      });
+
+      setPolicies((current) =>
+        current.map((policy) =>
+          policy.id === selectedPolicy.id
+            ? { ...policy, status: 'Signed' }
+            : policy
+        )
+      );
+
+      closeModal();
+      setSigning(false);
+    } catch (err) {
+      setSigning(false);
+      if (err.response?.status === 409) {
+        alert('This policy has already been signed by you.');
+        closeModal();
+        await fetchAssignedPolicies();
+      } else {
+        console.error(err);
+        alert('Failed to sign policy. Please try again.');
+      }
+    }
   };
 
   return (
-    <div
-      style={{
-        padding: "30px",
-        backgroundColor: "#f5f7fb",
-        minHeight: "100vh",
-        fontFamily: "Arial",
-      }}
-    >
-      <h1
-        style={{
-          marginBottom: "20px",
-          color: "#1e293b",
-        }}
-      >
-        📄 Assigned Policies
-      </h1>
+    <div className="page-shell">
+      <div className="page-header">
+        <div>
+          <h1>Assigned Policies</h1>
+          <p>View, filter, and sign your assigned policies.</p>
+        </div>
+      </div>
 
-      {loading ? (
-        <h3>Loading...</h3>
-      ) : (
-        <>
-          <div
-            style={{
-              background: "white",
-              padding: "20px",
-              borderRadius: "10px",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-            }}
-          >
-            <h3
-              style={{
-                marginBottom: "20px",
-              }}
+      <div className="card-panel">
+        <div className="table-panel-header">
+          <div>
+            <div className="section-title">Assigned Policies</div>
+            <p style={{ margin: '0.4rem 0 0', color: '#6b7280' }}>
+              {policies.length} items assigned
+            </p>
+          </div>
+          <span>{filteredPolicies.length} items shown</span>
+        </div>
+
+        <section className="filter-area" style={{ marginBottom: '1rem' }}>
+          <div className="filter-group">
+            <label>Category</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
             >
-              Total Policies: {policies.length}
-            </h3>
-
-            <table
-              width="100%"
-              cellPadding="12"
-              style={{
-                borderCollapse: "collapse",
-              }}
-            >
-              <thead>
-                <tr
-                  style={{
-                    background: "#0f172a",
-                    color: "white",
-                  }}
-                >
-                  <th>ID</th>
-                  <th>Title</th>
-                  <th>Category</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {policies.length > 0 ? (
-                  policies.map((policy) => (
-                    <tr
-                      key={policy.policyId}
-                      style={{
-                        borderBottom: "1px solid #ddd",
-                      }}
-                    >
-                      <td>{policy.policyId}</td>
-
-                      <td>{policy.title}</td>
-
-                      <td>{policy.category}</td>
-
-                      <td>{policy.description}</td>
-
-                      <td>
-                        {policy.isActive ? (
-                          <span
-                            style={{
-                              color: "green",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            Active
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              color: "red",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-
-                      <td>
-                        <button
-                          onClick={() =>
-                            openPdf(
-                              policy.blobUrl,
-                              policy.title
-                            )
-                          }
-                          style={{
-                            background: "#2563eb",
-                            color: "white",
-                            border: "none",
-                            padding: "8px 14px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          View PDF
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      style={{
-                        textAlign: "center",
-                        padding: "20px",
-                      }}
-                    >
-                      No Policies Found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {selectedPdf && (
-            <div
-              style={{
-                marginTop: "30px",
-                background: "white",
-                padding: "20px",
-                borderRadius: "10px",
-                boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-              }}
+          <div className="filter-group">
+            <label>Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "15px",
-                }}
-              >
-                <h2>{selectedTitle}</h2>
+              {statuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
 
-                <button
-                  onClick={() => setSelectedPdf("")}
-                  style={{
-                    background: "red",
-                    color: "white",
-                    border: "none",
-                    padding: "8px 14px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Close
-                </button>
-              </div>
+          <div className="filter-search">
+            <label>Search</label>
+            <input
+              type="text"
+              placeholder="Search policy"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+          </div>
+        </section>
 
-              <iframe
-                src={selectedPdf}
-                title="Policy PDF"
-                width="100%"
-                height="700px"
-                style={{
-                  border: "1px solid #ccc",
-                  borderRadius: "10px",
-                }}
-              />
-            </div>
-          )}
-        </>
-      )}
+        <PolicyTable
+          policies={filteredPolicies}
+          loading={loading}
+          onViewPolicy={openPolicy}
+        />
+      </div>
+
+      <PolicyModal
+        modalPolicy={selectedPolicy}
+        agreeChecked={agreeChecked}
+        onAgreeChange={setAgreeChecked}
+        onClose={closeModal}
+        onSign={handleSign}
+        signing={signing}
+      />
     </div>
   );
 }

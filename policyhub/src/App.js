@@ -5,17 +5,24 @@ import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
 import Policies from './pages/policies/Policies';
 import Users from './pages/users/Users';
+import Assignments from './pages/admin/Assignments';
+import Categories from './pages/admin/Categories';
+import History from './pages/history/History';
+import Unauthorized from './pages/Unauthorized';
 import ProtectedRoute from './routes/ProtectedRoute';
+import ROUTES from './routes/paths';
 import './assets/styles/App.css';
 
 function App() {
   return (
     <BrowserRouter>
-      <MainLayout>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+      <Routes>
+        <Route path={ROUTES.login} element={<Login />} />
+        <Route path={ROUTES.unauthorized} element={<Unauthorized />} />
+
+        <Route element={<MainLayout />}>
           <Route
-            path="/"
+            path={ROUTES.home}
             element={
               <ProtectedRoute>
                 <Dashboard />
@@ -23,7 +30,7 @@ function App() {
             }
           />
           <Route
-            path="/dashboard"
+            path={ROUTES.dashboard}
             element={
               <ProtectedRoute>
                 <Dashboard />
@@ -31,7 +38,7 @@ function App() {
             }
           />
           <Route
-            path="/policies"
+            path={ROUTES.policies}
             element={
               <ProtectedRoute>
                 <Policies />
@@ -39,16 +46,39 @@ function App() {
             }
           />
           <Route
-            path="/users"
+            path={ROUTES.assignments}
+            element={
+              <ProtectedRoute requiredRoles={["HRAdmin", "SuperAdmin"]}>
+                <Assignments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.categories}
+            element={
+              <ProtectedRoute requiredRoles={["HRAdmin", "SuperAdmin"]}>
+                <Categories />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.history}
+            element={
+              <ProtectedRoute>
+                <History />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.users}
             element={
               <ProtectedRoute requiredRoles={["HRAdmin", "SuperAdmin"]}>
                 <Users />
               </ProtectedRoute>
             }
           />
-          <Route path="/unauthorized" element={<div>Unauthorized</div>} />
-        </Routes>
-      </MainLayout>
+        </Route>
+      </Routes>
     </BrowserRouter>
   );
 }

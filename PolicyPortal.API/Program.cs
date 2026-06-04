@@ -111,10 +111,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
-// Ensure roles claim is mapped
+// Ensure roles claim is mapped from the raw access token
 builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
 {
+    options.MapInboundClaims = false;
     options.TokenValidationParameters.RoleClaimType = "roles";
+    options.TokenValidationParameters.NameClaimType = "name";
 });
 
 // Authorization policies for RBAC

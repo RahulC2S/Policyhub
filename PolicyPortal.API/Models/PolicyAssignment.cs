@@ -25,9 +25,9 @@ public partial class PolicyAssignment
 
     public virtual User? AssignedToUser { get; set; }
 
-    public virtual Policy Policy { get; set; } = null!;
+    public virtual Policy? Policy { get; set; }
 
     public virtual ICollection<PolicyAcknowledgment> PolicyAcknowledgments { get; set; } = new List<PolicyAcknowledgment>();
 
-    public virtual PolicyVersion Version { get; set; } = null!;
+    public virtual PolicyVersion? Version { get; set; }
 }

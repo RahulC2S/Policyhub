@@ -222,13 +222,11 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.UserId).HasName("PK__Users__1788CC4C65FDFD63");
 
-            entity.HasIndex(e => e.EmployeeId, "UQ__Users__7AD04F108950E166").IsUnique();
 
             entity.HasIndex(e => e.Email, "UQ__Users__A9D1053428CA2F81").IsUnique();
 
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.Email).HasMaxLength(150);
-            entity.Property(e => e.EmployeeId).HasMaxLength(50);
             entity.Property(e => e.FullName).HasMaxLength(150);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
 

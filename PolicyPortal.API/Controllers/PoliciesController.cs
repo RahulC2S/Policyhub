@@ -23,6 +23,7 @@
 // }
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using PolicyPortal.API.Models;
 using PolicyPortal.API.Repositories;
@@ -61,7 +62,8 @@ public class PoliciesController : ControllerBase
         description = p.Description,
         isActive = p.IsActive,
         category = p.Category != null ? p.Category.CategoryName : "",
-        blobUrl = _blobService.GenerateSasToken(p.BlobPath)
+        createdAt = p.CreatedAt,
+        blobUrl = !string.IsNullOrEmpty(p.BlobPath) ? _blobService.GenerateSasToken(p.BlobPath) : null
     });
 
     return Ok(result);
@@ -80,13 +82,59 @@ public class PoliciesController : ControllerBase
         return Ok(policy);
     }
 
+    [HttpPost("upload")]
+    [Authorize(Policy = "RequireHRAdmin")]
+    public async Task<IActionResult> UploadPolicy([FromForm] IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("No file provided.");
+
+        var blobUrl = await _blobService.UploadBlobAsync(file);
+        return Ok(new { blobUrl });
+    }
+
     [HttpPost]
     [Authorize(Policy = "RequireHRAdmin")]
     public IActionResult Create(Policy policy)
     {
+        if (policy == null)
+            return BadRequest("Policy data required.");
+
+        policy.CreatedAt = DateTime.UtcNow;
         _context.Policies.Add(policy);
         _context.SaveChanges();
 
         return Ok(policy);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Policy = "RequireHRAdmin")]
+    public IActionResult Update(int id, Policy updatedPolicy)
+    {
+        var policy = _context.Policies.Find(id);
+        if (policy == null)
+            return NotFound();
+
+        policy.Title = updatedPolicy.Title;
+        policy.Description = updatedPolicy.Description;
+        policy.CategoryId = updatedPolicy.CategoryId;
+        policy.IsActive = updatedPolicy.IsActive;
+        policy.BlobPath = updatedPolicy.BlobPath ?? policy.BlobPath;
+
+        _context.SaveChanges();
+        return Ok(policy);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Policy = "RequireHRAdmin")]
+    public IActionResult Delete(int id)
+    {
+        var policy = _context.Policies.Find(id);
+        if (policy == null)
+            return NotFound();
+
+        _context.Policies.Remove(policy);
+        _context.SaveChanges();
+        return NoContent();
     }
 }

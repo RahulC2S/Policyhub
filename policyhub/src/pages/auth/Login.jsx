@@ -36,54 +36,74 @@ const Login = () => {
 
   return (
     <div className="App">
-
       <div className="login-page">
-
         <aside className="login-hero">
-
           <div className="hero-copy">
-
             <img
-              src="https://c2stechs.com/wp-content/uploads/2023/11/logo-2-min.png"
-              alt="logo"
+              src="/logo192.png"
+              alt="C2S Logo"
               className="hero-logo"
             />
-
             <h1>PolicyHub</h1>
+            <p>Secure access for employees</p>
 
-            <p>
-              Secure access for employees
-            </p>
+            <div className="hero-features">
+              <div className="feature">
+                <span className="feature-icon">🔒</span>
+                <div>
+                  <strong>Secure & Trusted</strong>
+                  <p>Enterprise-grade security to protect your data.</p>
+                </div>
+              </div>
+              <div className="feature">
+                <span className="feature-icon">👤</span>
+                <div>
+                  <strong>Employee Access</strong>
+                  <p>Streamlined access to policies, documents and resources.</p>
+                </div>
+              </div>
+              <div className="feature">
+                <span className="feature-icon">⚡</span>
+                <div>
+                  <strong>Fast & Reliable</strong>
+                  <p>Built for performance and designed for productivity.</p>
+                </div>
+              </div>
+            </div>
 
+            <div className="hero-footer">
+              <span>Your security is our priority</span>
+            </div>
           </div>
-
         </aside>
 
         <section className="login-panel">
-
           <div className="signin-card">
+            <img
+              src="/logo192.png"
+              alt="C2S Logo"
+              className="signin-logo"
+            />
 
-            <h2>
-              Sign in with Microsoft
-            </h2>
+            <div className="signin-header">
+              <h2>Sign in with Microsoft</h2>
+              <p>Use your corporate account</p>
+            </div>
 
-            <p>
-              Use your corporate account
-            </p>
-
-            <button
-              className="login-btn"
-              onClick={handleLogin}
-            >
+            <button className="login-btn" onClick={handleLogin}>
               Sign in with Microsoft
             </button>
 
+            <div className="divider">or</div>
+
+            <div className="terms-box">
+              By continuing, you agree to our{' '}
+              <a href="#">Terms of Service</a> and{' '}
+              <a href="#">Privacy Policy</a>.
+            </div>
           </div>
-
         </section>
-
       </div>
-
     </div>
   );
 };

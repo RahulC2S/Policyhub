@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { getAccessToken } from '../services/authService';
+import API from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -17,6 +18,15 @@ export const AuthProvider = ({ children }) => {
     }
   });
   const [loading, setLoading] = useState(true);
+
+  const fetchBackendUser = async () => {
+    try {
+      const response = await API.get('/Users/me');
+      return response.data;
+    } catch (err) {
+      return null;
+    }
+  };
 
   const createUserFromAccount = (acc) => {
     if (!acc) return null;
@@ -39,6 +49,18 @@ export const AuthProvider = ({ children }) => {
       localAccountId: acc.localAccountId,
       roles,
       preferredUsername: claims.preferred_username || acc.username,
+    };
+  };
+
+  const mergeAccountAndBackendUser = (accountUser, backendUser) => {
+    if (!backendUser) return accountUser;
+
+    return {
+      ...accountUser,
+      ...backendUser,
+      roles: accountUser.roles,
+      fullName: backendUser.fullName || accountUser.fullName,
+      email: backendUser.email || accountUser.email,
     };
   };
 
@@ -77,8 +99,10 @@ export const AuthProvider = ({ children }) => {
           }
 
           const authenticatedUser = createUserFromAccount(acc);
+          const backendUser = await fetchBackendUser();
+          const mergedUser = mergeAccountAndBackendUser(authenticatedUser, backendUser);
           console.debug('AuthContext: account claims:', acc.idTokenClaims);
-          persistUser(authenticatedUser);
+          persistUser(mergedUser);
         } else if (!savedUser) {
           persistUser(null);
         }
@@ -91,11 +115,13 @@ export const AuthProvider = ({ children }) => {
 
     handleAuthResponse();
 
-    const callbackId = instance.addEventCallback((message) => {
+const callbackId = instance.addEventCallback(async (message) => {
       if (message.eventType === 'msal:loginSuccess') {
         const acc = instance.getActiveAccount() || instance.getAllAccounts()[0];
         const authenticatedUser = createUserFromAccount(acc);
-        persistUser(authenticatedUser);
+        const backendUser = await fetchBackendUser();
+        const mergedUser = mergeAccountAndBackendUser(authenticatedUser, backendUser);
+        persistUser(mergedUser);
         setLoading(false);
       }
       if (message.eventType === 'msal:loginFailure') {

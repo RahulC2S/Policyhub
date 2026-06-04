@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Threading.Tasks;
 using PolicyPortal.API.Models;
 using System.Linq;
@@ -30,6 +31,12 @@ public class UserSyncMiddleware
 
             var name = user.FindFirst("name")?.Value ?? user.Identity.Name ?? email;
 
+            var roleNames = GetRoleNames(user);
+            var normalizedRoleNames = roleNames.Select(r => r.ToLowerInvariant()).ToList();
+            var matchedRole = normalizedRoleNames.Count > 0
+                ? db.Roles.FirstOrDefault(r => normalizedRoleNames.Contains(r.RoleName.ToLower()))
+                : null;
+
             if (!string.IsNullOrEmpty(email))
             {
                 // upsert user
@@ -41,6 +48,7 @@ public class UserSyncMiddleware
                         AzureObjectId = oid,
                         FullName = name ?? email,
                         Email = email,
+                        RoleId = matchedRole?.RoleId,
                         IsActive = true,
                         CreatedAt = System.DateTime.UtcNow,
                         LastLogin = System.DateTime.UtcNow
@@ -51,7 +59,9 @@ public class UserSyncMiddleware
                 {
                     existing.AzureObjectId = existing.AzureObjectId ?? oid;
                     existing.FullName = name ?? existing.FullName;
+                    existing.Email = !string.IsNullOrWhiteSpace(email) ? email : existing.Email;
                     existing.LastLogin = System.DateTime.UtcNow;
+                    existing.RoleId = matchedRole?.RoleId ?? existing.RoleId;
                 }
 
                 try
@@ -66,5 +76,56 @@ public class UserSyncMiddleware
         }
 
         await _next(context);
+    }
+
+    private static List<string> GetRoleNames(ClaimsPrincipal user)
+    {
+        var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+        if (!roles.Any())
+        {
+            roles = user.FindAll("roles").Select(c => c.Value).ToList();
+        }
+
+        if (!roles.Any())
+        {
+            roles = user.FindAll("role").Select(c => c.Value).ToList();
+        }
+
+        var normalizedRoles = new List<string>();
+        foreach (var roleValue in roles)
+        {
+            if (string.IsNullOrWhiteSpace(roleValue))
+            {
+                continue;
+            }
+
+            if (roleValue.StartsWith("[") && roleValue.EndsWith("]"))
+            {
+                try
+                {
+                    var parsedRoles = JsonSerializer.Deserialize<List<string>>(roleValue);
+                    if (parsedRoles != null)
+                    {
+                        normalizedRoles.AddRange(parsedRoles.Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()));
+                        continue;
+                    }
+                }
+                catch
+                {
+                    // ignore bad JSON and fall back to raw value
+                }
+            }
+
+            if (roleValue.Contains(","))
+            {
+                normalizedRoles.AddRange(roleValue.Split(',').Select(r => r.Trim()).Where(r => !string.IsNullOrWhiteSpace(r)));
+                continue;
+            }
+
+            normalizedRoles.Add(roleValue.Trim());
+        }
+
+        return normalizedRoles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 }
