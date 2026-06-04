@@ -31,16 +31,20 @@ function Policies() {
     }
 
     try {
-      const response = await API.get('/PolicyAssignments/me');
-      const assignments = Array.isArray(response.data) ? response.data : [];
+      const [assignResponse, ackResponse] = await Promise.all([
+        API.get('/PolicyAssignments/me'),
+        API.get('/PolicyAcknowledgments/me'),
+      ]);
+
+      const assignments = Array.isArray(assignResponse.data) ? assignResponse.data : [];
+      const acknowledgments = Array.isArray(ackResponse.data) ? ackResponse.data : [];
+
+      // Build map of signed assignments for quick lookup
+      const signedAssignmentIds = new Set(acknowledgments.map(ack => ack.assignmentId));
 
       const mapped = assignments.map((assignment) => {
         const policy = assignment.policy || assignment;
-        const statusValue =
-          assignment.status ||
-          assignment.assignmentStatus ||
-          (assignment.acknowledgments?.length > 0 ? 'Signed' : 'Pending') ||
-          (policy.isActive === false ? 'Signed' : 'Pending');
+        const isSigned = signedAssignmentIds.has(assignment.assignmentId);
 
         return {
           id: assignment.assignmentId || assignment.policyId || policy.policyId,
@@ -49,7 +53,7 @@ function Policies() {
           category: assignment.category || policy.category || 'General',
           version: assignment.version || policy.version || '1.0',
           description: assignment.description || policy.description || '',
-          status: statusValue,
+          status: isSigned ? 'Signed' : 'Pending',
           blobUrl: assignment.blobUrl || policy.blobUrl || policy.blobPath || '',
         };
       });
@@ -101,11 +105,8 @@ function Policies() {
 
     try {
       setSigning(true);
-      await API.post('/PolicyAcknowledgments', {
+      await API.post('/PolicyAcknowledgments/sign', {
         assignmentId: selectedPolicy.assignmentId || selectedPolicy.id || 1,
-        userId: user?.userId,
-        status: 'Signed',
-        signedAt: new Date().toISOString(),
         consentText: 'I agree to the policy terms.',
       });
 
@@ -120,9 +121,15 @@ function Policies() {
       closeModal();
       setSigning(false);
     } catch (err) {
-      console.error(err);
-      alert('Failed to sign policy');
       setSigning(false);
+      if (err.response?.status === 409) {
+        alert('This policy has already been signed by you.');
+        closeModal();
+        await fetchAssignedPolicies();
+      } else {
+        console.error(err);
+        alert('Failed to sign policy. Please try again.');
+      }
     }
   };
 

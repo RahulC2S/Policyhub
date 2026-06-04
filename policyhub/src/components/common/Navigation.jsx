@@ -15,7 +15,15 @@ const Navigation = ({ onToggleSidebar, collapsed }) => {
         >
           <FiMenu />
         </button>
-        <div className="app-brand">PolicyHub</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img 
+            src="https://c2stechs.com/wp-content/uploads/2023/11/logo-2-min.png" 
+            alt="C2S Logo" 
+            style={{ height: '40px', width: 'auto' }}
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+          <div className="app-brand">PolicyHub</div>
+        </div>
       </div>
       <div className="app-header-right">
         <div className="user-badge">

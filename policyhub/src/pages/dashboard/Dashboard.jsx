@@ -6,67 +6,62 @@ import AdminDashboard from '../admin/AdminDashboard';
 
 // Sidebar is global; per-page sidebar items removed to avoid duplication.
 
-const categories = ['All', 'HR', 'IT', 'Compliance'];
-const statuses = ['All', 'Pending', 'Signed'];
-
 function Dashboard({ onLogout }) {
-  const [policies, setPolicies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [assignments, setAssignments] = useState([]);
+  const [acknowledgments, setAcknowledgments] = useState([]);
   const { user } = useAuth();
   const isAdmin = user?.roles?.some((role) =>
     ['HRAdmin', 'SuperAdmin'].includes(role)
   );
 
   useEffect(() => {
-    loadPolicies();
-  }, []);
-  const loadPolicies = async () => {
+    loadData();
+  }, [user]);
+
+  const loadData = async () => {
+    if (!user) {
+      return;
+    }
+
     try {
-      const res = await API.get('/Policies');
+      const [assignRes, ackRes] = await Promise.all([
+        API.get('/PolicyAssignments/me'),
+        API.get('/PolicyAcknowledgments/me'),
+      ]);
 
-      const mappedPolicies = res.data.map((p) => ({
-        id: p.policyId,
-        name: p.title,
-        category: p.category || 'General',
-        version: '1.0',
-        assignedDate: new Date(p.createdAt || new Date())
-          .toISOString()
-          .split('T')[0],
-        dueDate: new Date().toISOString().split('T')[0],
-        status: p.isActive ? 'Pending' : 'Signed',
-        effectiveDate: new Date(p.createdAt || new Date())
-          .toISOString()
-          .split('T')[0],
-        details: p.description || 'No Description',
-        blobUrl: p.blobUrl,
-      }));
-
-      setPolicies(mappedPolicies);
-      setLoading(false);
+      setAssignments(Array.isArray(assignRes.data) ? assignRes.data : []);
+      setAcknowledgments(Array.isArray(ackRes.data) ? ackRes.data : []);
     } catch (err) {
-      console.log(err);
-      setLoading(false);
+      console.error(err);
+      setAssignments([]);
+      setAcknowledgments([]);
     }
   };
 
   const summary = useMemo(() => {
-    const pending = policies.filter(
-      (policy) => policy.status === 'Pending'
-    ).length;
-    const signed = policies.filter(
-      (policy) => policy.status === 'Signed'
-    ).length;
-    const overdue = policies.filter(
-      (policy) =>
-        policy.status === 'Pending' && new Date(policy.dueDate) < new Date()
-    ).length;
+    const signedAssignmentIds = new Set(acknowledgments.map(ack => ack.assignmentId));
+    const now = new Date();
 
-    return {
-      pending,
-      signed,
-      overdue,
-    };
-  }, [policies]);
+    let pending = 0;
+    let signed = 0;
+    let overdue = 0;
+
+    assignments.forEach((assignment) => {
+      const isSigned = signedAssignmentIds.has(assignment.assignmentId);
+
+      if (isSigned) {
+        signed++;
+      } else {
+        pending++;
+        // Check if overdue
+        if (assignment.dueDate && new Date(assignment.dueDate) < now) {
+          overdue++;
+        }
+      }
+    });
+
+    return { pending, signed, overdue };
+  }, [assignments, acknowledgments]);
 
   if (isAdmin) {
     return <AdminDashboard />;

@@ -3,6 +3,8 @@ import API from '../../services/api';
 
 const PolicyModal = ({
   modalPolicy,
+  agreeChecked,
+  onAgreeChange,
   onClose,
   onSign,
   signing,
@@ -129,6 +131,11 @@ const PolicyModal = ({
       setAccepted(false);
     }
   }, [canAccept, accepted]);
+
+  // keep local accepted state in sync with parent prop
+  useEffect(() => {
+    setAccepted(!!agreeChecked);
+  }, [agreeChecked]);
 
   if (!modalPolicy) return null;
 
@@ -262,7 +269,13 @@ const PolicyModal = ({
               type="checkbox"
               checked={accepted}
               disabled={!canAccept}
-              onChange={(event) => setAccepted(event.target.checked)}
+              onChange={(event) => {
+                const v = event.target.checked;
+                setAccepted(v);
+                try {
+                  onAgreeChange?.(v);
+                } catch {}
+              }}
               style={{ width: '22px', height: '22px', accentColor: '#2563eb', cursor: canAccept ? 'pointer' : 'not-allowed' }}
             />
             <label style={{ color: canAccept ? '#111827' : '#64748b', fontSize: '1rem', lineHeight: '1.4' }}>
