@@ -17,7 +17,7 @@ const Navigation = ({ onToggleSidebar, collapsed }) => {
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <img 
-            src="https://c2stechs.com/wp-content/uploads/2023/11/logo-2-min.png" 
+            src="/logo192.png" 
             alt="C2S Logo" 
             style={{ height: '40px', width: 'auto' }}
             onError={(e) => { e.target.style.display = 'none'; }}

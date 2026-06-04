@@ -1,5 +1,12 @@
-import React, { useRef, useState, useEffect } from 'react';
-import API from '../../services/api';
+import React, { useEffect, useRef, useState } from "react";
+import API from "../../services/api";
+import { Document, Page, pdfjs } from "react-pdf";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.js";
+
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const PolicyModal = ({
   modalPolicy,
@@ -9,214 +16,252 @@ const PolicyModal = ({
   onSign,
   signing,
 }) => {
-  const [zoom, setZoom] = useState(1);
-  const viewerRef = useRef(null);
   const [blobSrc, setBlobSrc] = useState(null);
+  const [numPages, setNumPages] = useState(0);
+  const [zoom, setZoom] = useState(1.5);
+
   const [accepted, setAccepted] = useState(false);
   const [canAccept, setCanAccept] = useState(false);
-  const [scrollPrompt, setScrollPrompt] = useState('Please review the document before agreeing.');
 
+
+
+  const containerRef = useRef(null);
+
+  // Load PDF
   useEffect(() => {
-    let revoked = false;
     let objectUrl = null;
 
-    const load = async () => {
+    const loadPdf = async () => {
       if (!modalPolicy) return;
+
+      setBlobSrc(null);
+      setNumPages(0);
       setAccepted(false);
       setCanAccept(false);
-      setScrollPrompt('Please review the document before agreeing.');
 
-      if (modalPolicy.assignmentId) {
-        try {
-          const resp = await API.get(`/PolicyAssignments/${modalPolicy.assignmentId}/pdf`, {
-            responseType: 'arraybuffer',
+      try {
+        if (modalPolicy.assignmentId) {
+          const resp = await API.get(
+            `/PolicyAssignments/${modalPolicy.assignmentId}/pdf`,
+            {
+              responseType: "arraybuffer",
+            }
+          );
+
+          const blob = new Blob([resp.data], {
+            type: "application/pdf",
           });
-          const uint8 = new Uint8Array(resp.data);
-          const blob = new Blob([uint8], { type: resp.headers['content-type'] || 'application/pdf' });
+
           objectUrl = URL.createObjectURL(blob);
-          if (!revoked) setBlobSrc(objectUrl + '#toolbar=0');
-        } catch (e) {
-          console.error('Failed to fetch assignment pdf:', e);
-          setBlobSrc(null);
+          setBlobSrc(objectUrl);
+        } else if (modalPolicy.blobUrl) {
+          setBlobSrc(modalPolicy.blobUrl);
         }
-      } else if (modalPolicy && modalPolicy.blobUrl) {
-        setBlobSrc(`${modalPolicy.blobUrl}#toolbar=0`);
+      } catch (err) {
+        console.error("Failed to load PDF", err);
       }
     };
 
-    load();
+    loadPdf();
 
     return () => {
-      revoked = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setBlobSrc(null);
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
     };
   }, [modalPolicy]);
 
+  // Reset scroll every time modal/pdf changes
   useEffect(() => {
-    if (!blobSrc) return;
+    const container = containerRef.current;
 
-    const iframeEl = viewerRef.current;
-    if (!iframeEl) return;
+    if (container) {
+      container.scrollTop = 0;
+    }
 
-    let iframeWindow = null;
-    let iframeDocument = null;
+    setAccepted(false);
+    setCanAccept(false);
 
-    const handleScroll = () => {
-      try {
-        iframeWindow = viewerRef.current.contentWindow;
-        iframeDocument = iframeWindow?.document || viewerRef.current.contentDocument;
-        const scrollTop = iframeWindow?.scrollY || iframeDocument?.documentElement?.scrollTop || iframeDocument?.body?.scrollTop || viewerRef.current.scrollTop || 0;
-        const scrollHeight = iframeDocument?.documentElement?.scrollHeight || iframeDocument?.body?.scrollHeight || viewerRef.current.scrollHeight || 0;
-        const innerHeight = iframeWindow?.innerHeight || iframeDocument?.documentElement?.clientHeight || iframeDocument?.body?.clientHeight || viewerRef.current.clientHeight || 0;
+    onAgreeChange?.(false);
 
-        if (scrollHeight && scrollTop + innerHeight >= scrollHeight - 20) {
-          setCanAccept(true);
-          setScrollPrompt('You have reached the end of the document. You may now confirm that you have read it.');
-        }
-      } catch {
-        // Ignore cross-origin or PDF viewer access issues.
-      }
-    };
-
-    const attachScroll = () => {
-      try {
-        iframeWindow = iframeEl.contentWindow;
-        iframeWindow.addEventListener('scroll', handleScroll, { passive: true });
-      } catch {
-        // Ignore attach errors for unsupported viewers.
-      }
-
-      try {
-        iframeEl.addEventListener('scroll', handleScroll, { passive: true });
-      } catch {
-        // Ignore attach errors for non-scrollable iframe wrappers.
-      }
-
-      try {
-        iframeDocument = iframeEl.contentDocument;
-        iframeDocument?.addEventListener('scroll', handleScroll, { passive: true });
-      } catch {
-        // Ignore attach errors for unsupported document access.
-      }
-    };
-
-    attachScroll();
-
-    return () => {
-      if (iframeWindow) {
-        try {
-          iframeWindow.removeEventListener('scroll', handleScroll);
-        } catch {
-          // ignore cleanup errors
-        }
-      }
-
-      try {
-        iframeEl.removeEventListener('scroll', handleScroll);
-      } catch {
-        // ignore cleanup errors
-      }
-
-      try {
-        iframeDocument?.removeEventListener('scroll', handleScroll);
-      } catch {
-        // ignore cleanup errors
-      }
-    };
+    
   }, [blobSrc]);
 
+  // PDF loaded
+  const onLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+
+    setTimeout(() => {
+      const container = containerRef.current;
+
+      if (!container) return;
+
+      container.scrollTop = 0;
+
+      const handleScroll = () => {
+        const reachedBottom =
+          Math.ceil(
+            container.scrollTop + container.clientHeight
+          ) >= container.scrollHeight - 5;
+
+        setCanAccept(reachedBottom);
+
+        if (!reachedBottom) {
+          setAccepted(false);
+          onAgreeChange?.(false);
+        }
+      };
+
+      container.addEventListener("scroll", handleScroll);
+
+      handleScroll();
+    }, 500);
+  };
+
+  // Scroll validation
   useEffect(() => {
-    if (!canAccept && accepted) {
+    const container = containerRef.current;
+
+    if (!container) return;
+
+    const handleScroll = () => {
+      const container = containerRef.current;
+
+      if (!container) return;
+
+      const reachedBottom =
+        Math.ceil(container.scrollTop + container.clientHeight) >=
+        container.scrollHeight - 5;
+
+      if (reachedBottom) {
+        setCanAccept(true);
+      } else {
+        setCanAccept(false);
+        setAccepted(false);
+        onAgreeChange?.(false);
+      }
+    };
+    
+    container.addEventListener("scroll", handleScroll);
+
+    handleScroll();
+
+    return () => {
+      container.removeEventListener(
+        "scroll",
+        handleScroll
+      );
+    };
+  }, [accepted]);
+
+  useEffect(() => {
+    if (!canAccept) {
       setAccepted(false);
     }
-  }, [canAccept, accepted]);
-
-  // keep local accepted state in sync with parent prop
-  useEffect(() => {
-    setAccepted(!!agreeChecked);
-  }, [agreeChecked]);
+  }, [canAccept]);
 
   if (!modalPolicy) return null;
 
-  const src = modalPolicy.assignmentId
-    ? `/api/PolicyAssignments/${modalPolicy.assignmentId}/pdf#toolbar=0`
-    : `${modalPolicy.blobUrl}#toolbar=0`;
-
   return (
     <div
-      className="modal-overlay"
       onClick={onClose}
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        background: 'rgba(0,0,0,0.6)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.6)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
         zIndex: 9999,
-        padding: '20px',
       }}
     >
       <div
-        className="modal-card"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
-          width: '95%',
-          maxWidth: '1700px',
-          height: '95vh',
-          borderRadius: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          width: "95%",
+          maxWidth: "1600px",
+          height: "95vh",
+          background: "#fff",
+          borderRadius: "16px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
+        {/* Header */}
         <div
           style={{
-            padding: '20px',
-            borderBottom: '1px solid #e5e7eb',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: '#f8fafc',
+            padding: "20px",
+            borderBottom: "1px solid #e5e7eb",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
           <div>
-            <h2 style={{ margin: 0 }}>{modalPolicy.name}</h2>
-            <p style={{ margin: '5px 0 0 0', color: '#64748b' }}>{modalPolicy.category}</p>
+            <h2>{modalPolicy.name}</h2>
+            <p>{modalPolicy.category}</p>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
-                style={{ padding: '8px 12px', borderRadius: 8, cursor: 'pointer' }}
-              >
-                -
-              </button>
-              <div style={{ minWidth: 48, textAlign: 'center' }}>{Math.round(zoom * 100)}%</div>
-              <button
-                onClick={() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))}
-                style={{ padding: '8px 12px', borderRadius: 8, cursor: 'pointer' }}
-              >
-                +
-              </button>
-            </div>
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+            }}
+          >
+          <button
+            onClick={() =>
+              setZoom((z) =>
+                Math.max(0.75, z - 0.25)
+              )
+            }
+            style={{
+              background: "#2563eb",
+              color: "white",
+              border: "none",
+              padding: "8px 12px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+          >
+            −
+          </button>
+
+            <span>
+              {Math.round(zoom * 100)}%
+            </span>
+
+            <button
+              onClick={() =>
+                setZoom((z) =>
+                  Math.min(3, z + 0.25)
+                )
+              }
+              style={{
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "bold",
+              }}
+            >
+              +
+            </button>
 
             <button
               onClick={onClose}
               style={{
-                background: '#ef4444',
-                color: 'white',
-                border: 'none',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
+                background: "#ef4444",
+                color: "white",
+                border: "none",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "600",
               }}
             >
               Close
@@ -224,96 +269,129 @@ const PolicyModal = ({
           </div>
         </div>
 
+        {/* PDF Viewer */}
         <div
+          ref={containerRef}
           style={{
             flex: 1,
-            padding: '20px',
-            overflow: 'hidden',
-            background: '#e2e8f0',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
+            overflowY: "auto",
+            background: "#f1f5f9",
+            padding: "20px",
           }}
         >
-          <iframe
-            ref={viewerRef}
-            src={blobSrc || src}
-            title="Policy PDF"
-            onLoad={() => {
-              setCanAccept(true);
-              setScrollPrompt('The document is ready. You may now confirm that you have read it.');
-            }}
-            width={`${Math.round(zoom * 100)}%`}
-            height="100%"
-            style={{
-              border: 'none',
-              borderRadius: '10px',
-              background: 'white',
-              maxWidth: '1400px',
-            }}
-          />
+          {blobSrc && (
+            <Document
+              file={blobSrc}
+              onLoadSuccess={onLoadSuccess}
+              loading="Loading PDF..."
+            >
+              {Array.from(
+                new Array(numPages),
+                (_, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    <Page
+                      pageNumber={index + 1}
+                      scale={zoom}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                      devicePixelRatio={window.devicePixelRatio || 2}
+                    />
+                  </div>
+                )
+              )}
+            </Document>
+          )}
         </div>
 
+        {/* Footer */}
         <div
           style={{
-            padding: '20px',
-            borderTop: '1px solid #e5e7eb',
-            background: '#f8fafc',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
+            padding: "20px",
+            borderTop: "1px solid #e5e7eb",
+            background: "#fff",
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginTop: "10px",
+            }}
+          >
             <input
               type="checkbox"
               checked={accepted}
               disabled={!canAccept}
-              onChange={(event) => {
-                const v = event.target.checked;
-                setAccepted(v);
-                try {
-                  onAgreeChange?.(v);
-                } catch {}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setAccepted(checked);
+                onAgreeChange?.(checked);
               }}
-              style={{ width: '22px', height: '22px', accentColor: '#2563eb', cursor: canAccept ? 'pointer' : 'not-allowed' }}
+              style={{
+                width: "22px",
+                height: "22px",
+                cursor: canAccept ? "pointer" : "not-allowed",
+                accentColor: "#2563eb",
+                flexShrink: 0,
+              }}
             />
-            <label style={{ color: canAccept ? '#111827' : '#64748b', fontSize: '1rem', lineHeight: '1.4' }}>
-              I have read the policy and agree to comply with its terms.
+
+            <label
+              style={{
+                fontSize: "16px",
+                color: "#334155",
+                fontWeight: "500",
+                cursor: canAccept ? "pointer" : "default",
+              }}
+            >
+              I agree to the policy terms.
             </label>
           </div>
 
-          <div style={{ color: '#475569', fontSize: '0.95rem' }}>{scrollPrompt}</div>
-
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div
+            style={{
+              marginTop: "15px",
+            }}
+          >
             <button
               onClick={onSign}
-              disabled={!!signing || !canAccept || !accepted}
+              disabled={
+                !accepted ||
+                !canAccept ||
+                signing
+              }
               style={{
-                background: !!signing || !canAccept || !accepted ? '#93c5fd' : '#2563eb',
-                color: 'white',
-                border: 'none',
-                padding: '12px 20px',
-                borderRadius: '8px',
-                cursor: !!signing || !canAccept || !accepted ? 'not-allowed' : 'pointer',
-                fontWeight: 'bold',
+                background:
+                  !accepted ||
+                  !canAccept ||
+                  signing
+                    ? "#93c5fd"
+                    : "#2563eb",
+                color: "white",
+                border: "none",
+                padding: "12px 20px",
+                borderRadius: "8px",
+                fontWeight: "600",
+                cursor:
+                  !accepted ||
+                  !canAccept ||
+                  signing
+                    ? "not-allowed"
+                    : "pointer",
               }}
             >
-              {signing ? 'Signing...' : 'Proceed to Sign'}
-            </button>
-
-            <button
-              onClick={onClose}
-              style={{
-                background: '#e2e8f0',
-                border: 'none',
-                padding: '12px 20px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-              }}
-            >
-              Cancel
+              {signing
+                ? "Signing..."
+                : "Proceed to Sign"}
             </button>
           </div>
         </div>

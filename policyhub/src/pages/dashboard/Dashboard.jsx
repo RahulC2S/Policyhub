@@ -74,13 +74,6 @@ function Dashboard({ onLogout }) {
           <h1>PolicyHub Dashboard</h1>
           <p>Employee summary and status overview for your assigned policies.</p>
         </div>
-
-        <div className="page-meta">
-          <div className="user-badge small">
-            <span>{user?.fullName || 'Employee'}</span>
-            <small>{user?.roles?.includes('SuperAdmin') ? 'SuperAdmin' : user?.roles?.includes('HRAdmin') ? 'HR Admin' : 'Employee'}</small>
-          </div>
-        </div>
       </div>
 
       <SummaryCards summary={summary} />
