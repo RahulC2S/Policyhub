@@ -9,10 +9,14 @@ import AdminDashboard from '../admin/AdminDashboard';
 function Dashboard({ onLogout }) {
   const [assignments, setAssignments] = useState([]);
   const [acknowledgments, setAcknowledgments] = useState([]);
-  const { user } = useAuth();
+  const { user, viewPreference } = useAuth();
+  
   const isAdmin = user?.roles?.some((role) =>
     ['HRAdmin', 'SuperAdmin'].includes(role)
   );
+
+  // Show admin dashboard only if user is admin AND prefers admin view
+  const shouldShowAdminDashboard = isAdmin && viewPreference === 'admin';
 
   useEffect(() => {
     loadData();
@@ -63,7 +67,7 @@ function Dashboard({ onLogout }) {
     return { pending, signed, overdue };
   }, [assignments, acknowledgments]);
 
-  if (isAdmin) {
+  if (shouldShowAdminDashboard) {
     return <AdminDashboard />;
   }
 

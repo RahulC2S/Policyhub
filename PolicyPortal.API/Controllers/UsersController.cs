@@ -17,6 +17,13 @@ public class UsersController : ControllerBase
         _context = context;
     }
 
+    [HttpGet("health")]
+    [AllowAnonymous]
+    public IActionResult Health()
+    {
+        return Ok(new { status = "API is running", timestamp = DateTime.UtcNow });
+    }
+
     [HttpGet]
     [Authorize(Policy = "RequireHRAdmin")]
     public IActionResult GetAll()
@@ -83,9 +90,13 @@ public class UsersController : ControllerBase
         var oid = User.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
             ?? User.FindFirst("oid")?.Value;
 
-        var email = User.FindFirst(System.Security.Claims.ClaimTypes.Upn)?.Value
+        var email = User.FindFirst("upn")?.Value
+            ?? User.FindFirst("unique_name")?.Value
+            ?? User.FindFirst(System.Security.Claims.ClaimTypes.Upn)?.Value
             ?? User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-            ?? User.FindFirst("preferred_username")?.Value;
+            ?? User.FindFirst("email")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? User.FindFirst("preferredUsername")?.Value;
 
         var currentUser = _context.Users
             .Include(u => u.Role)
@@ -106,6 +117,20 @@ public class UsersController : ControllerBase
             currentUser.IsActive,
             currentUser.CreatedAt,
             currentUser.LastLogin
+        });
+    }
+
+    [HttpGet("debug/claims")]
+    [AllowAnonymous]
+    public IActionResult DebugClaims()
+    {
+        var claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+        return Ok(new
+        {
+            isAuthenticated = User?.Identity?.IsAuthenticated,
+            userName = User?.Identity?.Name,
+            claimsCount = claims.Count,
+            claims
         });
     }
 

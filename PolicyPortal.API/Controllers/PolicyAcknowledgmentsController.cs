@@ -48,9 +48,13 @@ public class PolicyAcknowledgmentsController : ControllerBase
         var oid = User.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
             ?? User.FindFirst("oid")?.Value;
 
-        var email = User.FindFirst(System.Security.Claims.ClaimTypes.Upn)?.Value
+        var email = User.FindFirst("upn")?.Value
+            ?? User.FindFirst("unique_name")?.Value
+            ?? User.FindFirst(System.Security.Claims.ClaimTypes.Upn)?.Value
             ?? User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-            ?? User.FindFirst("preferred_username")?.Value;
+            ?? User.FindFirst("email")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? User.FindFirst("preferredUsername")?.Value;
 
         var currentUser = _context.Users
             .FirstOrDefault(u => u.AzureObjectId == oid || (email != null && u.Email.ToLower() == email.ToLower()));
@@ -97,9 +101,13 @@ public class PolicyAcknowledgmentsController : ControllerBase
         var oid = User.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
             ?? User.FindFirst("oid")?.Value;
 
-        var email = User.FindFirst(System.Security.Claims.ClaimTypes.Upn)?.Value
+        var email = User.FindFirst("upn")?.Value
+            ?? User.FindFirst("unique_name")?.Value
+            ?? User.FindFirst(System.Security.Claims.ClaimTypes.Upn)?.Value
             ?? User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-            ?? User.FindFirst("preferred_username")?.Value;
+            ?? User.FindFirst("email")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? User.FindFirst("preferredUsername")?.Value;
 
         var currentUser = _context.Users
             .FirstOrDefault(u => u.AzureObjectId == oid || (email != null && u.Email.ToLower() == email.ToLower()));

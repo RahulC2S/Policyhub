@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import API from "../../services/api";
 import { Document, Page, pdfjs } from "react-pdf";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.js";
-
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
+pdfjs.GlobalWorkerOptions.workerSrc =
+  `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+//pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const PolicyModal = ({
   modalPolicy,
@@ -22,6 +23,8 @@ const PolicyModal = ({
 
   const [accepted, setAccepted] = useState(false);
   const [canAccept, setCanAccept] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
 
 
@@ -38,8 +41,14 @@ const PolicyModal = ({
       setNumPages(0);
       setAccepted(false);
       setCanAccept(false);
+      setIsLoading(true);
+      setProgress(0);
 
       try {
+        const progressInterval = setInterval(() => {
+          setProgress((prev) => Math.min(prev + Math.random() * 30, 90));
+        }, 200);
+
         if (modalPolicy.assignmentId) {
           const resp = await API.get(
             `/PolicyAssignments/${modalPolicy.assignmentId}/pdf`,
@@ -53,22 +62,39 @@ const PolicyModal = ({
           });
 
           objectUrl = URL.createObjectURL(blob);
+          clearInterval(progressInterval);
+          setProgress(100);
           setBlobSrc(objectUrl);
         } else if (modalPolicy.blobUrl) {
+          clearInterval(progressInterval);
+          setProgress(100);
           setBlobSrc(modalPolicy.blobUrl);
         }
       } catch (err) {
         console.error("Failed to load PDF", err);
+        setIsLoading(false);
       }
     };
 
     loadPdf();
 
     return () => {
+      setBlobSrc(null);
+
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
       }
     };
+  }, [modalPolicy]);
+
+  // Clean up when modal closes
+  useEffect(() => {
+    if (!modalPolicy) {
+      setBlobSrc(null);
+      setNumPages(0);
+      setAccepted(false);
+      setCanAccept(false);
+    }
   }, [modalPolicy]);
 
   // Reset scroll every time modal/pdf changes
@@ -84,12 +110,14 @@ const PolicyModal = ({
 
     onAgreeChange?.(false);
 
-    
+
   }, [blobSrc]);
 
   // PDF loaded
   const onLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
+    setProgress(100);
+    setIsLoading(false);
 
     setTimeout(() => {
       const container = containerRef.current;
@@ -104,61 +132,14 @@ const PolicyModal = ({
             container.scrollTop + container.clientHeight
           ) >= container.scrollHeight - 5;
 
-        setCanAccept(reachedBottom);
-
-        if (!reachedBottom) {
-          setAccepted(false);
-          onAgreeChange?.(false);
+        if (reachedBottom) {
+          setCanAccept(true);
         }
       };
 
       container.addEventListener("scroll", handleScroll);
-
-      handleScroll();
     }, 500);
   };
-
-  // Scroll validation
-  useEffect(() => {
-    const container = containerRef.current;
-
-    if (!container) return;
-
-    const handleScroll = () => {
-      const container = containerRef.current;
-
-      if (!container) return;
-
-      const reachedBottom =
-        Math.ceil(container.scrollTop + container.clientHeight) >=
-        container.scrollHeight - 5;
-
-      if (reachedBottom) {
-        setCanAccept(true);
-      } else {
-        setCanAccept(false);
-        setAccepted(false);
-        onAgreeChange?.(false);
-      }
-    };
-    
-    container.addEventListener("scroll", handleScroll);
-
-    handleScroll();
-
-    return () => {
-      container.removeEventListener(
-        "scroll",
-        handleScroll
-      );
-    };
-  }, [accepted]);
-
-  useEffect(() => {
-    if (!canAccept) {
-      setAccepted(false);
-    }
-  }, [canAccept]);
 
   if (!modalPolicy) return null;
 
@@ -269,6 +250,26 @@ const PolicyModal = ({
           </div>
         </div>
 
+        {/* Progress Bar */}
+        {isLoading && (
+          <div
+            style={{
+              height: "4px",
+              background: "#e5e7eb",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                background: "#2563eb",
+                width: `${progress}%`,
+                transition: "width 0.3s ease",
+              }}
+            />
+          </div>
+        )}
+
         {/* PDF Viewer */}
         <div
           ref={containerRef}
@@ -281,6 +282,7 @@ const PolicyModal = ({
         >
           {blobSrc && (
             <Document
+              key={blobSrc}
               file={blobSrc}
               onLoadSuccess={onLoadSuccess}
               loading="Loading PDF..."

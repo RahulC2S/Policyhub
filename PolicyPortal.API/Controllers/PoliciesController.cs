@@ -84,6 +84,7 @@ public class PoliciesController : ControllerBase
 
     [HttpPost("upload")]
     [Authorize(Policy = "RequireHRAdmin")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> UploadPolicy([FromForm] IFormFile file)
     {
         if (file == null || file.Length == 0)

@@ -18,6 +18,14 @@ export const AuthProvider = ({ children }) => {
     }
   });
   const [loading, setLoading] = useState(true);
+  const [viewPreference, setViewPreference] = useState(() => {
+    try {
+      const saved = localStorage.getItem('viewPreference');
+      return saved || 'admin'; // 'admin' or 'employee'
+    } catch {
+      return 'admin';
+    }
+  });
 
   const fetchBackendUser = async () => {
     try {
@@ -139,6 +147,17 @@ const callbackId = instance.addEventCallback(async (message) => {
     return await getAccessToken();
   };
 
+  const setView = (view) => {
+    if (['admin', 'employee'].includes(view)) {
+      setViewPreference(view);
+      try {
+        localStorage.setItem('viewPreference', view);
+      } catch (err) {
+        console.warn('AuthContext: localStorage setView failed', err);
+      }
+    }
+  };
+
   const logout = async () => {
     try {
       console.debug('AuthContext: logging out');
@@ -159,6 +178,8 @@ const callbackId = instance.addEventCallback(async (message) => {
     loading,
     getToken,
     logout,
+    viewPreference,
+    setView,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

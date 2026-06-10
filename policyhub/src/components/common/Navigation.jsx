@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiMenu } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
+import ViewSwitcher from './ViewSwitcher';
 
 const Navigation = ({ onToggleSidebar, collapsed }) => {
   const { user, logout } = useAuth();
@@ -26,9 +27,12 @@ const Navigation = ({ onToggleSidebar, collapsed }) => {
         </div>
       </div>
       <div className="app-header-right">
-        <div className="user-badge">
-          <span>{user?.fullName || user?.name || 'User'}</span>
-          <small>{user?.roles?.includes('SuperAdmin') ? 'SuperAdmin' : user?.roles?.includes('HRAdmin') ? 'HR Admin' : 'Employee'}</small>
+        <div className="user-section">
+          <div className="user-badge">
+            <span>{user?.fullName || user?.name || 'User'}</span>
+            <small>{user?.roles?.includes('SuperAdmin') ? 'SuperAdmin' : user?.roles?.includes('HRAdmin') ? 'HR Admin' : 'Employee'}</small>
+          </div>
+          <ViewSwitcher />
         </div>
         <button type="button" className="logout-btn" onClick={logout}>
           Logout

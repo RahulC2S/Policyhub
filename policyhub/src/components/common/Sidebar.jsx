@@ -5,15 +5,18 @@ import { useAuth } from '../../context/AuthContext';
 import ROUTES from '../../routes/paths';
 
 const Sidebar = ({ collapsed }) => {
-  const { user } = useAuth();
+  const { user, viewPreference } = useAuth();
   const roles = user?.roles || [];
   const isAdmin = roles.some((r) => ['HRAdmin', 'SuperAdmin'].includes(r));
-  const policyTitle = isAdmin ? 'Policies' : 'My Policies';
+  
+  // Show admin items based on both isAdmin and current view preference
+  const showAdminItems = isAdmin && viewPreference === 'admin';
+  const policyTitle = showAdminItems ? 'Policies' : 'My Policies';
 
   const items = [
     { to: ROUTES.dashboard, icon: FiHome, key: 'dashboard', title: 'Dashboard' },
     { to: ROUTES.policies, icon: FiFileText, key: 'policies', title: policyTitle },
-    ...(isAdmin ? [
+    ...(showAdminItems ? [
       { to: ROUTES.assignments, icon: FiUsers, key: 'assignments', title: 'Assignments' },
       { to: ROUTES.categories, icon: FiLayers, key: 'categories', title: 'Categories' },
       { to: ROUTES.users, icon: FiUsers, key: 'users', title: 'Users' },

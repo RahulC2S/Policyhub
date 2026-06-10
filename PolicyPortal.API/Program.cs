@@ -91,6 +91,9 @@ builder.Services.AddSwaggerGen(c =>
         Title = "Policy Portal API",
         Version = "v1"
     });
+    
+    // Allow multiple operation ids
+    c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
 });
 
 //
@@ -151,8 +154,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    app.UseHttpsRedirection();
+}
 
 // ✅ Enable CORS
 app.UseCors("AllowReact");

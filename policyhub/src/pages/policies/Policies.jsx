@@ -17,11 +17,14 @@ function Policies() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, viewPreference } = useAuth();
 
   const isAdmin = user?.roles?.some((role) =>
     ['HRAdmin', 'SuperAdmin'].includes(role)
   );
+
+  // Show admin policies only if user is admin AND in admin view
+  const shouldShowAdminPolicies = isAdmin && viewPreference === 'admin';
 
   const fetchAssignedPolicies = async () => {
     if (!user) {
@@ -85,7 +88,7 @@ function Policies() {
     });
   }, [policies, categoryFilter, statusFilter, searchText]);
 
-  if (isAdmin) {
+  if (shouldShowAdminPolicies) {
     return <PoliciesAdmin />;
   }
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -10,10 +11,12 @@ namespace PolicyPortal.API.Middleware;
 public class UserSyncMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly ILogger<UserSyncMiddleware> _logger;
 
-    public UserSyncMiddleware(RequestDelegate next)
+    public UserSyncMiddleware(RequestDelegate next, ILogger<UserSyncMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context, ApplicationDbContext db)
@@ -21,15 +24,27 @@ public class UserSyncMiddleware
         var user = context.User;
         if (user?.Identity != null && user.Identity.IsAuthenticated)
         {
-            // Try to read Azure AD object id and email
-            var oid = user.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
-                ?? user.FindFirst("oid")?.Value;
+            var oid = GetClaimValue(user,
+                "http://schemas.microsoft.com/identity/claims/objectidentifier",
+                "oid",
+                ClaimTypes.NameIdentifier);
 
-            var email = user.FindFirst(ClaimTypes.Upn)?.Value
-                ?? user.FindFirst(ClaimTypes.Email)?.Value
-                ?? user.FindFirst("preferred_username")?.Value;
+            var email = GetClaimValue(user,
+                "upn",
+                "unique_name",
+                ClaimTypes.Upn,
+                ClaimTypes.Email,
+                "email",
+                "preferred_username",
+                "preferredUsername");
 
-            var name = user.FindFirst("name")?.Value ?? user.Identity.Name ?? email;
+            var name = GetClaimValue(user, "name") ?? user.Identity.Name ?? email;
+
+            _logger.LogDebug("UserSyncMiddleware invoked. oid={Oid}, email={Email}, name={Name}, isAuthenticated={IsAuthenticated}",
+                oid,
+                email,
+                name,
+                user.Identity.IsAuthenticated);
 
             var roleNames = GetRoleNames(user);
             var normalizedRoleNames = roleNames.Select(r => r.ToLowerInvariant()).ToList();
@@ -39,7 +54,6 @@ public class UserSyncMiddleware
 
             if (!string.IsNullOrEmpty(email))
             {
-                // upsert user
                 var existing = db.Users.FirstOrDefault(u => u.AzureObjectId == oid || u.Email.ToLower() == email.ToLower());
                 if (existing == null)
                 {
@@ -54,6 +68,7 @@ public class UserSyncMiddleware
                         LastLogin = System.DateTime.UtcNow
                     };
                     db.Users.Add(existing);
+                    _logger.LogInformation("UserSyncMiddleware creating new user. email={Email}, oid={Oid}", email, oid);
                 }
                 else
                 {
@@ -62,20 +77,41 @@ public class UserSyncMiddleware
                     existing.Email = !string.IsNullOrWhiteSpace(email) ? email : existing.Email;
                     existing.LastLogin = System.DateTime.UtcNow;
                     existing.RoleId = matchedRole?.RoleId ?? existing.RoleId;
+                    _logger.LogInformation("UserSyncMiddleware updating existing user. userId={UserId}, email={Email}, oid={Oid}", existing.UserId, email, oid);
                 }
 
                 try
                 {
                     await db.SaveChangesAsync();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // swallow errors to avoid breaking requests
+                    _logger.LogError(ex, "Failed to sync Azure AD user to database. oid={Oid}, email={Email}", oid, email);
                 }
+            }
+            else
+            {
+                _logger.LogWarning("UserSyncMiddleware skipped sync because email was missing. oid={Oid}, claims={Claims}",
+                    oid,
+                    string.Join(", ", user.Claims.Select(c => c.Type + "=" + c.Value)));
             }
         }
 
         await _next(context);
+    }
+
+    private static string? GetClaimValue(ClaimsPrincipal user, params string[] claimTypes)
+    {
+        foreach (var claimType in claimTypes)
+        {
+            var claim = user.FindFirst(claimType);
+            if (!string.IsNullOrWhiteSpace(claim?.Value))
+            {
+                return claim.Value;
+            }
+        }
+
+        return null;
     }
 
     private static List<string> GetRoleNames(ClaimsPrincipal user)

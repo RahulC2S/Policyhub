@@ -1,0 +1,74 @@
+.view-switcher {
+  position: relative;
+}
+
+.view-switcher-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #111827;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.view-switcher-button:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.view-switcher-button .chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.view-switcher-button .chevron.open {
+  transform: rotate(180deg);
+}
+
+.view-switcher-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+  z-index: 1000;
+  min-width: 160px;
+  overflow: hidden;
+}
+
+.view-switcher-option {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: #111827;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.view-switcher-option:hover {
+  background: #f3f4f6;
+}
+
+.view-switcher-option.active {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.view-switcher-option:first-child {
+  border-bottom: 1px solid #e5e7eb;
+}
