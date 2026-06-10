@@ -12,6 +12,7 @@ const PolicyTable = ({ policies, loading, onViewPolicy }) => {
           <th>Policy</th>
           <th>Category</th>
           <th>Version</th>
+          <th>Due Date</th>
           <th>Status</th>
           <th>Action</th>
         </tr>
@@ -19,7 +20,7 @@ const PolicyTable = ({ policies, loading, onViewPolicy }) => {
       <tbody>
         {policies.length === 0 ? (
           <tr>
-            <td colSpan="5" className="empty-state">
+            <td colSpan="6" className="empty-state">
               No assigned policies found.
             </td>
           </tr>
@@ -29,6 +30,11 @@ const PolicyTable = ({ policies, loading, onViewPolicy }) => {
               <td>{policy.name}</td>
               <td>{policy.category}</td>
               <td>{policy.version}</td>
+              <td>
+                {policy.dueDate
+                  ? new Date(policy.dueDate).toLocaleDateString()
+                  : '-'}
+              </td>
               <td>
                 <span className={`status-pill ${String(policy.status || 'Pending').toLowerCase()}`}>
                   {policy.status || 'Pending'}

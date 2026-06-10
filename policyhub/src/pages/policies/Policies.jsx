@@ -58,6 +58,7 @@ function Policies() {
           description: assignment.description || policy.description || '',
           status: isSigned ? 'Signed' : 'Pending',
           blobUrl: assignment.blobUrl || policy.blobUrl || policy.blobPath || '',
+          dueDate: assignment.dueDate || null,
         };
       });
 
