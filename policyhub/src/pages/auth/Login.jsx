@@ -70,10 +70,6 @@ const Login = () => {
                 </div>
               </div>
             </div>
-
-            <div className="hero-footer">
-              <span>Your security is our priority</span>
-            </div>
           </div>
         </aside>
 
@@ -94,7 +90,7 @@ const Login = () => {
               Sign in with Microsoft
             </button>
 
-            <div className="divider">or</div>
+            {/* <div className="divider">or</div> */}
 
             <div className="terms-box">
               By continuing, you agree to our{' '}

@@ -1,62 +1,4 @@
-// using Microsoft.OpenApi.Models;
-// using Microsoft.EntityFrameworkCore;
-// using PolicyPortal.API.Models;
-// using PolicyPortal.API.Interfaces;
-// using PolicyPortal.API.Repositories;
-// using PolicyPortal.API.Services;
-// builder.Services.AddScoped<IPolicyRepository, PolicyRepository>();
-// builder.Services.AddScoped<IPolicyService, PolicyService>();
-// var builder = WebApplication.CreateBuilder(args);
 
-// // Add services
-// builder.Services.AddControllers();
-
-// builder.Services.AddEndpointsApiExplorer();
-
-// builder.Services.AddSwaggerGen(c =>
-// {
-//     c.SwaggerDoc("v1", new OpenApiInfo
-//     {
-//         Title = "Policy Portal API",
-//         Version = "v1"
-//     });
-// });
-
-// builder.Services.AddCors(options =>
-// {
-//     options.AddPolicy("AllowReact",
-//         policy =>
-//         {
-//             policy.AllowAnyOrigin()
-//                   .AllowAnyHeader()
-//                   .AllowAnyMethod();
-//         });
-// });
-
-// // ADD THIS HERE
-// builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//     options.UseSqlServer(
-//         builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// var app = builder.Build();
-
-// // Configure middleware
-// if (app.Environment.IsDevelopment())
-// {
-//     app.UseSwagger();
-
-//     app.UseSwaggerUI();
-// }
-
-// app.UseHttpsRedirection();
-
-// app.UseCors("AllowReact");
-
-// app.UseAuthorization();
-
-// app.MapControllers();
-
-// app.Run();
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using PolicyPortal.API.Models;
@@ -110,7 +52,9 @@ builder.Services.AddCors(options =>
         });
 });
 
+//
 // ✅ Microsoft Entra ID (Azure AD) authentication
+//
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
@@ -149,22 +93,19 @@ var app = builder.Build();
 //
 // ✅ Middleware
 //
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-else
-{
-    app.UseHttpsRedirection();
-}
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
+
+app.UseHttpsRedirection();
 
 // ✅ Enable CORS
 app.UseCors("AllowReact");
 
 // ✅ Authentication + Authorization middleware
 app.UseAuthentication();
- app.UseMiddleware<UserSyncMiddleware>();
+app.UseMiddleware<UserSyncMiddleware>();
 app.UseAuthorization();
 
 // ✅ Map Controllers

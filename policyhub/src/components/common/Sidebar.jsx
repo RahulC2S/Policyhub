@@ -26,10 +26,6 @@ const Sidebar = ({ collapsed }) => {
 
   return (
     <aside className={`app-sidebar ${collapsed ? 'collapsed' : ''}`}>
-      <div className="sidebar-brand">
-        <div className="sidebar-brand-icon">P</div>
-        {!collapsed && <div className="sidebar-brand-label">PolicyHub</div>}
-      </div>
       <div className="sidebar-inner">
         {items.map((it) => {
           const Icon = it.icon;

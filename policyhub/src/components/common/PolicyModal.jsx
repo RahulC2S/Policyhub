@@ -26,7 +26,7 @@ const PolicyModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-
+  const canSign = modalPolicy?.status !== 'Signed';
 
   const containerRef = useRef(null);
 
@@ -320,82 +320,95 @@ const PolicyModal = ({
             background: "#fff",
           }}
         >
+          {canSign ? (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginTop: "10px",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={accepted}
+                  disabled={!canAccept}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setAccepted(checked);
+                    onAgreeChange?.(checked);
+                  }}
+                  style={{
+                    width: "22px",
+                    height: "22px",
+                    cursor: canAccept ? "pointer" : "not-allowed",
+                    accentColor: "#2563eb",
+                    flexShrink: 0,
+                  }}
+                />
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginTop: "10px",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={accepted}
-              disabled={!canAccept}
-              onChange={(e) => {
-                const checked = e.target.checked;
-                setAccepted(checked);
-                onAgreeChange?.(checked);
-              }}
-              style={{
-                width: "22px",
-                height: "22px",
-                cursor: canAccept ? "pointer" : "not-allowed",
-                accentColor: "#2563eb",
-                flexShrink: 0,
-              }}
-            />
+                <label
+                  style={{
+                    fontSize: "16px",
+                    color: "#334155",
+                    fontWeight: "500",
+                    cursor: canAccept ? "pointer" : "default",
+                  }}
+                >
+                  I agree to the policy terms.
+                </label>
+              </div>
 
-            <label
+              <div
+                style={{
+                  marginTop: "15px",
+                }}
+              >
+                <button
+                  onClick={onSign}
+                  disabled={
+                    !accepted ||
+                    !canAccept ||
+                    signing
+                  }
+                  style={{
+                    background:
+                      !accepted ||
+                      !canAccept ||
+                      signing
+                        ? "#93c5fd"
+                        : "#2563eb",
+                    color: "white",
+                    border: "none",
+                    padding: "12px 20px",
+                    borderRadius: "8px",
+                    fontWeight: "600",
+                    cursor:
+                      !accepted ||
+                      !canAccept ||
+                      signing
+                        ? "not-allowed"
+                        : "pointer",
+                  }}
+                >
+                  {signing
+                    ? "Signing..."
+                    : "Proceed to Sign"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div
               style={{
+                color: "#475569",
                 fontSize: "16px",
-                color: "#334155",
-                fontWeight: "500",
-                cursor: canAccept ? "pointer" : "default",
+                fontWeight: 500,
               }}
             >
-              I agree to the policy terms.
-            </label>
-          </div>
-
-          <div
-            style={{
-              marginTop: "15px",
-            }}
-          >
-            <button
-              onClick={onSign}
-              disabled={
-                !accepted ||
-                !canAccept ||
-                signing
-              }
-              style={{
-                background:
-                  !accepted ||
-                  !canAccept ||
-                  signing
-                    ? "#93c5fd"
-                    : "#2563eb",
-                color: "white",
-                border: "none",
-                padding: "12px 20px",
-                borderRadius: "8px",
-                fontWeight: "600",
-                cursor:
-                  !accepted ||
-                  !canAccept ||
-                  signing
-                    ? "not-allowed"
-                    : "pointer",
-              }}
-            >
-              {signing
-                ? "Signing..."
-                : "Proceed to Sign"}
-            </button>
-          </div>
+              This policy has already been signed. You can only view it.
+            </div>
+          )}
         </div>
       </div>
     </div>

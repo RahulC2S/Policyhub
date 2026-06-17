@@ -105,7 +105,7 @@ function Policies() {
   };
 
   const handleSign = async () => {
-    if (!selectedPolicy || !agreeChecked) return;
+    if (!selectedPolicy || !agreeChecked || selectedPolicy.status === 'Signed') return;
 
     try {
       setSigning(true);
@@ -149,7 +149,6 @@ function Policies() {
       <div className="card-panel">
         <div className="table-panel-header">
           <div>
-            <div className="section-title">Assigned Policies</div>
             <p style={{ margin: '0.4rem 0 0', color: '#6b7280' }}>
               {policies.length} items assigned
             </p>
@@ -172,7 +171,7 @@ function Policies() {
             </select>
           </div>
 
-          <div className="filter-group">
+          <div className="filter-group" style={{ marginRight: '1rem' }}>
             <label>Status</label>
             <select
               value={statusFilter}
