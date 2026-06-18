@@ -14,11 +14,11 @@ const Navigation = ({ onToggleSidebar, collapsed }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
-  const roleLabel = user?.roles?.includes('SuperAdmin')
-    ? 'SuperAdmin'
-    : user?.roles?.includes('HRAdmin')
-    ? 'HR Admin'
-    : 'Employee';
+  const roles = user?.roles || [];
+  const isSuperAdmin = roles.includes('SuperAdmin');
+  const isHRAdmin = roles.includes('HRAdmin');
+  const isAdminUser = isSuperAdmin || isHRAdmin;
+  const roleLabel = isSuperAdmin ? 'SuperAdmin' : isHRAdmin ? 'HR Admin' : 'Employee';
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -31,7 +31,7 @@ const Navigation = ({ onToggleSidebar, collapsed }) => {
   }, []);
 
   const handleViewSelect = (v) => {
-    if (v === viewPreference) return;
+    if (!isAdminUser || v === viewPreference) return;
     if (typeof setView === 'function') setView(v);
   };
 
@@ -81,24 +81,26 @@ const Navigation = ({ onToggleSidebar, collapsed }) => {
                 </div>
               </div>
 
-              <div className="user-menu-section">
-                <div className="view-options">
-                  <button
-                    type="button"
-                    className={`view-option ${viewPreference === 'employee' ? 'active' : ''}`}
-                    onClick={() => handleViewSelect('employee')}
-                  >
-                    Employee View
-                  </button>
-                  <button
-                    type="button"
-                    className={`view-option ${viewPreference === 'admin' ? 'active' : ''}`}
-                    onClick={() => handleViewSelect('admin')}
-                  >
-                    Admin View
-                  </button>
+              {isAdminUser && (
+                <div className="user-menu-section">
+                  <div className="view-options">
+                    <button
+                      type="button"
+                      className={`view-option ${viewPreference === 'employee' ? 'active' : ''}`}
+                      onClick={() => handleViewSelect('employee')}
+                    >
+                      Employee View
+                    </button>
+                    <button
+                      type="button"
+                      className={`view-option ${viewPreference === 'admin' ? 'active' : ''}`}
+                      onClick={() => handleViewSelect('admin')}
+                    >
+                      Admin View
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="menu-actions">
                 <button type="button" className="menu-item logout" onClick={logout}>
