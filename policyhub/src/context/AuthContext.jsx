@@ -18,14 +18,24 @@ export const AuthProvider = ({ children }) => {
     }
   });
   const [loading, setLoading] = useState(true);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [viewPreference, setViewPreference] = useState(() => {
     try {
       const saved = localStorage.getItem('viewPreference');
-      return saved || 'admin'; // 'admin' or 'employee'
+      return saved || 'admin';
     } catch {
       return 'admin';
     }
   });
+
+  const clearStoredAuthData = () => {
+    try {
+      localStorage.removeItem('user');
+      localStorage.removeItem('viewPreference');
+    } catch (err) {
+      console.warn('AuthContext: failed to clear localStorage', err);
+    }
+  };
 
   const fetchBackendUser = async () => {
     try {
@@ -85,18 +95,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const clearUserState = () => {
+    clearStoredAuthData();
+    setViewPreference('admin');
+    persistUser(null);
+  };
+
   useEffect(() => {
     if (!instance) return;
     const savedUser = user;
 
-    const handleAuthResponse = async () => {
+    const loadAuthState = async () => {
       try {
         const response = await instance.handleRedirectPromise();
         const acc = response?.account || instance.getActiveAccount() || instance.getAllAccounts()[0];
         console.debug('AuthContext: handleRedirectPromise response:', response);
         console.debug('AuthContext: msal account after redirect or existing:', acc);
 
+        if (!acc && savedUser) {
+          console.debug('AuthContext: clearing stale localStorage user because no MSAL account is present');
+          clearUserState();
+        }
+
         if (acc) {
+          setIsAuthenticating(true);
           try {
             if (!instance.getActiveAccount()) {
               instance.setActiveAccount(acc);
@@ -116,14 +138,20 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (err) {
         console.warn('AuthContext: handleRedirectPromise failed', err);
+        clearUserState();
       } finally {
         setLoading(false);
+        setIsAuthenticating(false);
       }
     };
 
-    handleAuthResponse();
+    loadAuthState();
 
-const callbackId = instance.addEventCallback(async (message) => {
+    const callbackId = instance.addEventCallback(async (message) => {
+      if (message.eventType === 'msal:loginStart') {
+        setIsAuthenticating(true);
+      }
+
       if (message.eventType === 'msal:loginSuccess') {
         const acc = instance.getActiveAccount() || instance.getAllAccounts()[0];
         const authenticatedUser = createUserFromAccount(acc);
@@ -131,10 +159,14 @@ const callbackId = instance.addEventCallback(async (message) => {
         const mergedUser = mergeAccountAndBackendUser(authenticatedUser, backendUser);
         persistUser(mergedUser);
         setLoading(false);
+        setIsAuthenticating(false);
       }
+
       if (message.eventType === 'msal:loginFailure') {
-        persistUser(null);
+        clearUserState();
         setLoading(false);
+        setIsAuthenticating(false);
+        window.location.replace('/login');
       }
     });
 
@@ -145,6 +177,39 @@ const callbackId = instance.addEventCallback(async (message) => {
 
   const getToken = async () => {
     return await getAccessToken();
+  };
+
+  const refreshUser = async () => {
+    setLoading(true);
+    try {
+      const acc = instance.getActiveAccount() || instance.getAllAccounts()[0];
+      if (!acc) {
+        clearUserState();
+        return null;
+      }
+
+      if (!instance.getActiveAccount()) {
+        instance.setActiveAccount(acc);
+      }
+
+      const authenticatedUser = createUserFromAccount(acc);
+      const backendUser = await fetchBackendUser();
+      const mergedUser = mergeAccountAndBackendUser(authenticatedUser, backendUser);
+      persistUser(mergedUser);
+      return mergedUser;
+    } catch (err) {
+      console.warn('AuthContext: refreshUser failed', err);
+      clearUserState();
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startLogin = () => {
+    clearStoredAuthData();
+    persistUser(null);
+    setIsAuthenticating(true);
   };
 
   const setView = (view) => {
@@ -161,7 +226,7 @@ const callbackId = instance.addEventCallback(async (message) => {
   const logout = async () => {
     try {
       console.debug('AuthContext: logging out');
-      persistUser(null);
+      clearUserState();
       const account = instance?.getActiveAccount() || instance?.getAllAccounts()?.[0];
       await instance.logoutRedirect({
         account,
@@ -169,14 +234,17 @@ const callbackId = instance.addEventCallback(async (message) => {
       });
     } catch (err) {
       console.warn('AuthContext: logout failed', err);
-      persistUser(null);
+      clearUserState();
     }
   };
 
   const value = {
     user,
     loading,
+    isAuthenticating,
     getToken,
+    refreshUser,
+    startLogin,
     logout,
     viewPreference,
     setView,

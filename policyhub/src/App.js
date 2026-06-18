@@ -9,15 +9,29 @@ import Assignments from './pages/admin/Assignments';
 import Categories from './pages/admin/Categories';
 import History from './pages/history/History';
 import Unauthorized from './pages/Unauthorized';
+import AccessPending from './pages/AccessPending';
 import ProtectedRoute from './routes/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
+import FullScreenLoader from './components/common/FullScreenLoader';
 import ROUTES from './routes/paths';
 import './assets/styles/App.css';
 
 function App() {
+  const { loading, isAuthenticating } = useAuth();
+
+  if (loading || isAuthenticating) {
+    return <FullScreenLoader />;
+  }
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path={ROUTES.login} element={<Login />} />
+        <Route path={ROUTES.accessPending} element={
+          <ProtectedRoute allowRoleLess>
+            <AccessPending />
+          </ProtectedRoute>
+        } />
         <Route path={ROUTES.unauthorized} element={<Unauthorized />} />
 
         <Route element={<MainLayout />}>

@@ -12,25 +12,22 @@ const Login = () => {
 
   const { instance } = useMsal();
 
-  const { user, loading } = useAuth();
+  const { user, loading, isAuthenticating, startLogin } = useAuth();
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && !isAuthenticating && user) {
       navigate('/dashboard');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, isAuthenticating, navigate]);
 
   const handleLogin = async () => {
     try {
-
+      startLogin();
       await instance.loginRedirect(loginRequest);
-
     } catch (err) {
-
       console.log(err);
-
     }
   };
 
@@ -86,7 +83,7 @@ const Login = () => {
               <p>Use your corporate account</p>
             </div>
 
-            <button className="login-btn" onClick={handleLogin}>
+            <button className="login-btn" onClick={handleLogin} disabled={loading || isAuthenticating}>
               Sign in with Microsoft
             </button>
 

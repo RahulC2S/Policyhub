@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 import { msalInstance, loginRequest } from '../auth/msalConfig';
 
 // Simple wrapper around MSAL to acquire tokens and manage session
@@ -13,14 +12,11 @@ export const login = async () => {
 
 export const logout = async () => {
   try {
-    // const account = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0];
-    // await msalInstance.logoutRedirect({
-    //   account,
-    //   postLogoutRedirectUri: window.location.origin,
-    // });
-  
-    localStorage.clear();
-    Navigate('/login');
+    const account = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0];
+    await msalInstance.logoutRedirect({
+      account,
+      postLogoutRedirectUri: window.location.origin,
+    });
   } catch (err) {
     console.error('MSAL logout error', err);
   }

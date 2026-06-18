@@ -3,20 +3,29 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
+import FullScreenLoader from "../components/common/FullScreenLoader";
+import ROUTES from "./paths";
 
 const ProtectedRoute = ({
   children,
   requiredRoles = [],
+  allowRoleLess = false,
 }) => {
 
-  const { user, loading } = useAuth();
+  const { user, loading, isAuthenticating } = useAuth();
 
-  if (loading) {
-    return <div>Loading...</div>;
+  if (loading || isAuthenticating) {
+    return <FullScreenLoader />;
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={ROUTES.login} replace />;
+  }
+
+  const hasRoles = Array.isArray(user.roles) && user.roles.length > 0;
+
+  if (!hasRoles && !allowRoleLess) {
+    return <Navigate to={ROUTES.accessPending} replace />;
   }
 
   if (requiredRoles.length > 0) {
@@ -28,7 +37,7 @@ const ProtectedRoute = ({
     );
 
     if (!hasRole) {
-      return <Navigate to="/unauthorized" replace />;
+      return <Navigate to={ROUTES.unauthorized} replace />;
     }
   }
 

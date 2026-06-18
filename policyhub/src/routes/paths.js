@@ -7,6 +7,7 @@ const ROUTES = {
   history: '/history',
   users: '/users',
   login: '/login',
+  accessPending: '/access-pending',
   unauthorized: '/unauthorized',
 };
 

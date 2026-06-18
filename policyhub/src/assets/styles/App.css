@@ -259,6 +259,134 @@
   margin-bottom: 1.5rem;
 }
 
+.auth-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  padding: 2rem;
+}
+
+.auth-loader-card {
+  max-width: 520px;
+  width: 100%;
+  border-radius: 24px;
+  padding: 2.5rem;
+  background: rgba(15, 23, 42, 0.96);
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.4);
+  text-align: center;
+}
+
+.auth-loader-spinner {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 1.75rem;
+  border-radius: 50%;
+  border: 8px solid rgba(248, 250, 252, 0.16);
+  border-top-color: #60a5fa;
+  animation: spin 1s linear infinite;
+}
+
+.auth-loader-text h1 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.auth-loader-text p {
+  margin: 0.9rem auto 0;
+  max-width: 420px;
+  color: rgba(248, 250, 252, 0.78);
+  line-height: 1.75;
+}
+
+.pending-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(180deg, #eef2f7 0%, #f8fafc 100%);
+}
+
+.pending-card {
+  width: 100%;
+  max-width: 540px;
+  background: #ffffff;
+  border-radius: 30px;
+  padding: 3rem;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
+  text-align: center;
+}
+
+.pending-icon {
+  width: 72px;
+  height: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px;
+  background: rgba(37, 99, 235, 0.12);
+  font-size: 2.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.pending-card h1 {
+  margin: 0;
+  font-size: 2.25rem;
+  line-height: 1.1;
+  color: #0f172a;
+}
+
+.pending-card p {
+  margin: 1.25rem auto 0;
+  color: #475569;
+  line-height: 1.8;
+  max-width: 38rem;
+}
+
+.pending-details {
+  margin-top: 1rem;
+  color: #334155;
+}
+
+.pending-contact {
+  margin-top: 0.85rem;
+  color: #475569;
+}
+
+.pending-contact a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.pending-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.login-btn.secondary {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+.login-btn.secondary:hover {
+  background: #eef2f7;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .divider::before,
 .divider::after {
   content: '';
