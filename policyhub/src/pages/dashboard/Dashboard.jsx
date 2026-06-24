@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import API from '../../services/api';
+import ROUTES from '../../routes/paths';
 import SummaryCards from '../../components/feature-specific/dashboard/SummaryCards';
 import AdminDashboard from '../admin/AdminDashboard';
 
 // Sidebar is global; per-page sidebar items removed to avoid duplication.
 
 function Dashboard({ onLogout }) {
+  const navigate = useNavigate();
   const [assignments, setAssignments] = useState([]);
   const [acknowledgments, setAcknowledgments] = useState([]);
   const { user, viewPreference } = useAuth();
@@ -67,6 +70,11 @@ function Dashboard({ onLogout }) {
     return { pending, signed, overdue };
   }, [assignments, acknowledgments]);
 
+  const handleSummaryClick = (status) => {
+    if (!status) return;
+    navigate(`${ROUTES.policies}?status=${status.toLowerCase()}`);
+  };
+
   if (shouldShowAdminDashboard) {
     return <AdminDashboard />;
   }
@@ -80,7 +88,7 @@ function Dashboard({ onLogout }) {
         </div>
       </div>
 
-      <SummaryCards summary={summary} />
+      <SummaryCards summary={summary} onCardClick={handleSummaryClick} />
 
       <div className="card-panel" style={{ marginTop: '1.5rem' }}>
         <div className="section-title">What to do next</div>

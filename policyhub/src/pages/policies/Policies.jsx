@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import API from '../../services/api';
 import PolicyTable from '../../components/common/PolicyTable';
@@ -6,7 +7,19 @@ import PolicyModal from '../../components/common/PolicyModal';
 import PoliciesAdmin from '../admin/PoliciesAdmin';
 
 const categories = ['All', 'HR', 'IT', 'Compliance'];
-const statuses = ['All', 'Pending', 'Signed'];
+const statuses = ['All', 'Pending', 'Signed', 'Overdue'];
+
+const normalizeStatusParam = (status) => {
+  if (!status) return null;
+
+  const normalized = status.toString().trim().toLowerCase();
+
+  if (normalized === 'pending') return 'Pending';
+  if (normalized === 'signed') return 'Signed';
+  if (normalized === 'overdue') return 'Overdue';
+
+  return null;
+};
 
 function Policies() {
   const [policies, setPolicies] = useState([]);
@@ -17,6 +30,7 @@ function Policies() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
   const { user, viewPreference } = useAuth();
 
   const isAdmin = user?.roles?.some((role) =>
@@ -75,12 +89,34 @@ function Policies() {
     fetchAssignedPolicies();
   }, [user]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const requestedStatus = normalizeStatusParam(params.get('status'));
+
+    if (requestedStatus) {
+      setStatusFilter(requestedStatus);
+    }
+  }, [location.search]);
+
   const filteredPolicies = useMemo(() => {
+    const now = new Date();
+
     return policies.filter((policy) => {
       const matchesCategory =
         categoryFilter === 'All' || policy.category === categoryFilter;
-      const matchesStatus =
-        statusFilter === 'All' || policy.status === statusFilter;
+
+      let matchesStatus = true;
+      if (statusFilter === 'Pending') {
+        matchesStatus = policy.status === 'Pending';
+      } else if (statusFilter === 'Signed') {
+        matchesStatus = policy.status === 'Signed';
+      } else if (statusFilter === 'Overdue') {
+        matchesStatus =
+          policy.status === 'Pending' &&
+          policy.dueDate &&
+          new Date(policy.dueDate) < now;
+      }
+
       const matchesSearch = policy.name
         .toLowerCase()
         .includes(searchText.toLowerCase());
@@ -102,6 +138,12 @@ function Policies() {
     setSelectedPolicy(null);
     setAgreeChecked(false);
     setSigning(false);
+  };
+
+  const clearFilters = () => {
+    setCategoryFilter('All');
+    setStatusFilter('All');
+    setSearchText('');
   };
 
   const handleSign = async () => {
@@ -193,6 +235,12 @@ function Policies() {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
             />
+          </div>
+
+          <div className="filter-actions">
+            <button type="button" className="secondary-button" onClick={clearFilters}>
+              Clear filters
+            </button>
           </div>
         </section>
 

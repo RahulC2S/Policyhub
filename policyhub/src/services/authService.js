@@ -1,3 +1,4 @@
+import { InteractionRequiredAuthError } from '@azure/msal-browser';
 import { msalInstance, loginRequest } from '../auth/msalConfig';
 
 // Simple wrapper around MSAL to acquire tokens and manage session
@@ -39,15 +40,12 @@ export const getAccessToken = async () => {
     console.debug('authService: acquired token silently');
     return response.accessToken;
   } catch (err) {
-    console.warn('authService: acquireTokenSilent failed', err);
-    try {
-      await msalInstance.acquireTokenRedirect(request);
-      // acquireTokenRedirect does not return a response here
-      return null;
-    } catch (inner) {
-      console.error('Token acquisition failed', inner);
-      return null;
+    if (err instanceof InteractionRequiredAuthError) {
+      console.warn('authService: silent token acquisition requires interaction', err);
+    } else {
+      console.warn('authService: acquireTokenSilent failed', err);
     }
+    return null;
   }
 };
 

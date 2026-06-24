@@ -875,6 +875,26 @@ input:focus {
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
 }
 
+.summary-card-button {
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.summary-card-button:hover,
+.summary-card-button:focus-visible {
+  transform: scale(1.03);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  border-color: #cbd5e1;
+  outline: none;
+}
+
+.summary-card-button:focus-visible {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
+}
+
 .summary-card .card-icon {
   width: 58px;
   height: 58px;
@@ -1731,6 +1751,26 @@ input:focus {
   border: 1px solid #e2e8f0;
 }
 
+.summary-card-button {
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.summary-card-button:hover,
+.summary-card-button:focus-visible {
+  transform: scale(1.03);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  border-color: #cbd5e1;
+  outline: none;
+}
+
+.summary-card-button:focus-visible {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
+}
+
 .card-meta {
   display: flex;
   align-items: center;
@@ -1774,17 +1814,44 @@ input:focus {
 
 .filter-area {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-end;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
 }
 
 .filter-group,
-.filter-search {
+.filter-search,
+.filter-actions {
   background: #f8fafc;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.filter-actions {
+  align-items: center;
+  justify-content: center;
+  min-width: 130px;
+}
+
+.filter-actions button {
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.filter-actions button:hover,
+.filter-actions button:focus-visible {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+  outline: none;
 }
 
 .filter-group label,

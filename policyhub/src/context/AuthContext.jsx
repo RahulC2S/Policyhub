@@ -9,14 +9,7 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const { instance } = useMsal();
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [viewPreference, setViewPreference] = useState(() => {
@@ -84,15 +77,6 @@ export const AuthProvider = ({ children }) => {
 
   const persistUser = (userData) => {
     setUser(userData);
-    try {
-      if (userData) {
-        localStorage.setItem('user', JSON.stringify(userData));
-      } else {
-        localStorage.removeItem('user');
-      }
-    } catch (err) {
-      console.warn('AuthContext: localStorage set failed', err);
-    }
   };
 
   const clearUserState = () => {
@@ -103,45 +87,55 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (!instance) return;
-    const savedUser = user;
+
+    let isActive = true;
+
+    const isRedirectResponse = () => {
+      return window.location.hash.includes('code=') ||
+        window.location.hash.includes('id_token=') ||
+        window.location.search.includes('code=') ||
+        window.location.search.includes('state=');
+    };
 
     const loadAuthState = async () => {
+      setLoading(true);
       try {
-        const response = await instance.handleRedirectPromise();
-        const acc = response?.account || instance.getActiveAccount() || instance.getAllAccounts()[0];
-        console.debug('AuthContext: handleRedirectPromise response:', response);
-        console.debug('AuthContext: msal account after redirect or existing:', acc);
+        const response = isRedirectResponse()
+          ? await instance.handleRedirectPromise()
+          : null;
 
-        if (!acc && savedUser) {
-          console.debug('AuthContext: clearing stale localStorage user because no MSAL account is present');
-          clearUserState();
+        const acc = response?.account || instance.getActiveAccount() || instance.getAllAccounts()[0];
+
+        if (acc && !instance.getActiveAccount()) {
+          try {
+            instance.setActiveAccount(acc);
+            console.debug('AuthContext: set active account from redirect or cached account', acc);
+          } catch (e) {
+            console.warn('AuthContext: setActiveAccount failed', e);
+          }
         }
 
         if (acc) {
           setIsAuthenticating(true);
-          try {
-            if (!instance.getActiveAccount()) {
-              instance.setActiveAccount(acc);
-              console.debug('AuthContext: set active account', acc);
-            }
-          } catch (e) {
-            console.warn('AuthContext: setActiveAccount failed', e);
-          }
-
           const authenticatedUser = createUserFromAccount(acc);
           const backendUser = await fetchBackendUser();
           const mergedUser = mergeAccountAndBackendUser(authenticatedUser, backendUser);
-          console.debug('AuthContext: account claims:', acc.idTokenClaims);
-          persistUser(mergedUser);
-        } else if (!savedUser) {
-          persistUser(null);
+          if (isActive) {
+            persistUser(mergedUser);
+          }
+        } else if (isActive) {
+          clearUserState();
         }
       } catch (err) {
         console.warn('AuthContext: handleRedirectPromise failed', err);
-        clearUserState();
+        if (isActive) {
+          clearUserState();
+        }
       } finally {
-        setLoading(false);
-        setIsAuthenticating(false);
+        if (isActive) {
+          setLoading(false);
+          setIsAuthenticating(false);
+        }
       }
     };
 
@@ -149,11 +143,14 @@ export const AuthProvider = ({ children }) => {
 
     const callbackId = instance.addEventCallback(async (message) => {
       if (message.eventType === 'msal:loginStart') {
+        setLoading(true);
         setIsAuthenticating(true);
       }
 
       if (message.eventType === 'msal:loginSuccess') {
         const acc = instance.getActiveAccount() || instance.getAllAccounts()[0];
+        if (!acc) return;
+
         const authenticatedUser = createUserFromAccount(acc);
         const backendUser = await fetchBackendUser();
         const mergedUser = mergeAccountAndBackendUser(authenticatedUser, backendUser);
@@ -171,7 +168,10 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => {
-      if (callbackId) instance.removeEventCallback(callbackId);
+      isActive = false;
+      if (callbackId) {
+        instance.removeEventCallback(callbackId);
+      }
     };
   }, [instance]);
 
@@ -209,6 +209,7 @@ export const AuthProvider = ({ children }) => {
   const startLogin = () => {
     clearStoredAuthData();
     persistUser(null);
+    setLoading(true);
     setIsAuthenticating(true);
   };
 
