@@ -1,7 +1,7 @@
 import React from 'react';
 
 const FullScreenLoader = ({
-  title = 'Signing you in...',
+  title = 'Loading...',
   message = 'Please wait while we load your account and permissions.',
 }) => {
   return (

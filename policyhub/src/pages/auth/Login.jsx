@@ -1,19 +1,12 @@
 import React, { useEffect } from "react";
-
-import { useNavigate } from "react-router-dom";
-
+import { Navigate, useNavigate } from "react-router-dom";
 import { useMsal } from "@azure/msal-react";
-
 import { useAuth } from "../../context/AuthContext";
-
 import { loginRequest } from "../../auth/msalConfig";
 
 const Login = () => {
-
   const { instance } = useMsal();
-
   const { user, loading, isAuthenticating, startLogin } = useAuth();
-
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,6 +15,9 @@ const Login = () => {
     }
   }, [user, loading, isAuthenticating, navigate]);
 
+  if (user) {
+  return <Navigate to="/dashboard" replace />;
+}
   const handleLogin = async () => {
     try {
       startLogin();

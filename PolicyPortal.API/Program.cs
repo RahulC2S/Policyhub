@@ -85,6 +85,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // ✅ Dependency Injection
 //
 builder.Services.AddScoped<IPolicyRepository, PolicyRepository>();
+builder.Services.AddScoped<IPolicyAssignmentService, PolicyAssignmentService>();
 builder.Services.AddScoped<BlobService>();
 // builder.Services.AddScoped<UserSyncMiddleware>();
 

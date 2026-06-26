@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using PolicyPortal.API.Interfaces;
 using PolicyPortal.API.Models;
 using PolicyPortal.API.Services;
 using System.IO;
@@ -14,11 +15,13 @@ public class PolicyAssignmentsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly BlobService _blobService;
+    private readonly IPolicyAssignmentService _assignmentService;
 
-    public PolicyAssignmentsController(ApplicationDbContext context, BlobService blobService)
+    public PolicyAssignmentsController(ApplicationDbContext context, BlobService blobService, IPolicyAssignmentService assignmentService)
     {
         _context = context;
         _blobService = blobService;
+        _assignmentService = assignmentService;
     }
 
     [HttpGet("{assignmentId}/pdf")]
@@ -55,43 +58,15 @@ public class PolicyAssignmentsController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult GetAll(int? userId = null)
+    public async Task<IActionResult> GetAll(int? userId = null)
     {
-        var query = _context.PolicyAssignments
-            .Include(a => a.Policy)
-            .Include(a => a.AssignedToUser)
-            .Include(a => a.AssignedToDepartment)
-            .Include(a => a.PolicyAcknowledgments)
-            .AsQueryable();
-
-        if (userId.HasValue)
-        {
-            query = query.Where(a => a.AssignedToUserId == userId.Value);
-        }
-
-        var assignments = query.Select(a => new
-        {
-            assignmentId = a.AssignmentId,
-            policyId = a.PolicyId,
-            policyTitle = a.Policy.Title,
-            blobUrl = !string.IsNullOrEmpty(a.Policy.BlobPath) ? _blobService.GenerateSasToken(a.Policy.BlobPath) : null,
-            assignedToUserId = a.AssignedToUserId,
-            assignedToUser = a.AssignedToUser != null ? a.AssignedToUser.FullName : null,
-            assignedToDepartmentId = a.AssignedToDepartmentId,
-            assignedToDepartment = a.AssignedToDepartment != null ? a.AssignedToDepartment.DepartmentName : null,
-            a.AssignedDate,
-            dueDate = a.DueDate.HasValue ? a.DueDate.Value.ToString("yyyy-MM-dd") : null,
-            isMandatory = a.IsMandatory,
-            acknowledgments = a.PolicyAcknowledgments.Count
-        })
-        .ToList();
-
+        var assignments = await _assignmentService.GetAssignmentsAsync(userId);
         return Ok(assignments);
     }
 
     [HttpGet("me")]
     [Authorize(Policy = "RequireEmployee")]
-    public IActionResult GetMine()
+    public async Task<IActionResult> GetMine()
     {
         var oid = User.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value
             ?? User.FindFirst("oid")?.Value;
@@ -104,34 +79,34 @@ public class PolicyAssignmentsController : ControllerBase
             ?? User.FindFirst("preferred_username")?.Value
             ?? User.FindFirst("preferredUsername")?.Value;
 
-        var currentUser = _context.Users
-            .FirstOrDefault(u => u.AzureObjectId == oid || (email != null && u.Email.ToLower() == email.ToLower()));
+        var currentUser = await _context.Users
+            .FirstOrDefaultAsync(u => u.AzureObjectId == oid || (email != null && u.Email.ToLower() == email.ToLower()));
 
         if (currentUser == null)
             return NotFound();
 
-        return GetAll(currentUser.UserId);
+        return await GetAll(currentUser.UserId);
     }
 
     [HttpPost]
     [Authorize(Policy = "RequireHRAdmin")]
-    public IActionResult Create(PolicyAssignment assignment)
+    public async Task<IActionResult> Create(PolicyAssignment assignment)
     {
         if (assignment == null)
             return BadRequest("Assignment is required.");
 
         assignment.AssignedDate = DateTime.UtcNow;
 
-        if (assignment.VersionId == 0 || !_context.PolicyVersions.Any(v => v.VersionId == assignment.VersionId))
+        if (assignment.VersionId == 0 || !await _context.PolicyVersions.AnyAsync(v => v.VersionId == assignment.VersionId))
         {
-            var version = _context.PolicyVersions
+            var version = await _context.PolicyVersions
                 .Where(v => v.PolicyId == assignment.PolicyId)
                 .OrderByDescending(v => v.CreatedAt)
-                .FirstOrDefault();
+                .FirstOrDefaultAsync();
 
             if (version == null)
             {
-                var policy = _context.Policies.Find(assignment.PolicyId);
+                var policy = await _context.Policies.FindAsync(assignment.PolicyId);
                 if (policy != null)
                 {
                     version = new PolicyVersion
@@ -145,7 +120,7 @@ public class PolicyAssignmentsController : ControllerBase
                         FileSize = 0
                     };
                     _context.PolicyVersions.Add(version);
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                 }
             }
 
@@ -156,7 +131,7 @@ public class PolicyAssignmentsController : ControllerBase
         }
 
         _context.PolicyAssignments.Add(assignment);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync();
         return Ok(assignment);
     }
 }

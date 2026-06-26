@@ -45,8 +45,8 @@ export const AuthProvider = ({ children }) => {
     const roles = Array.isArray(claims.roles)
       ? claims.roles
       : claims.roles
-      ? [claims.roles]
-      : [];
+        ? [claims.roles]
+        : [];
 
     return {
       userId: claims.oid || acc.localAccountId || acc.homeAccountId,
@@ -100,9 +100,7 @@ export const AuthProvider = ({ children }) => {
     const loadAuthState = async () => {
       setLoading(true);
       try {
-        const response = isRedirectResponse()
-          ? await instance.handleRedirectPromise()
-          : null;
+        const response = await instance.handleRedirectPromise();
 
         const acc = response?.account || instance.getActiveAccount() || instance.getAllAccounts()[0];
 
@@ -193,10 +191,20 @@ export const AuthProvider = ({ children }) => {
       }
 
       const authenticatedUser = createUserFromAccount(acc);
+      persistUser(authenticatedUser);
+
+      // Load backend data in the background
       const backendUser = await fetchBackendUser();
-      const mergedUser = mergeAccountAndBackendUser(authenticatedUser, backendUser);
-      persistUser(mergedUser);
-      return mergedUser;
+
+      if (backendUser) {
+        persistUser(
+          mergeAccountAndBackendUser(
+            authenticatedUser,
+            backendUser
+          )
+        );
+      }
+      //return mergedUser;
     } catch (err) {
       console.warn('AuthContext: refreshUser failed', err);
       clearUserState();
@@ -227,7 +235,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       console.debug('AuthContext: logging out');
-      clearUserState();
+      //clearUserState();
       const account = instance?.getActiveAccount() || instance?.getAllAccounts()?.[0];
       await instance.logoutRedirect({
         account,

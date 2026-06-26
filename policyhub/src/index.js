@@ -8,6 +8,7 @@ import { msalInstance } from './auth/msalConfig';
 import { AuthProvider } from './context/AuthContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+await msalInstance.initialize();
 root.render(
   <MsalProvider instance={msalInstance}>
     <AuthProvider>

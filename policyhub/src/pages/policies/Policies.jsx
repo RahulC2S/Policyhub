@@ -67,7 +67,7 @@ function Policies() {
           id: assignment.assignmentId || assignment.policyId || policy.policyId,
           assignmentId: assignment.assignmentId,
           name: assignment.title || policy.title || assignment.policyTitle || 'Policy',
-          category: assignment.category || policy.category || 'General',
+          category: assignment.categoryName || '',
           version: assignment.version || policy.version || '1.0',
           description: assignment.description || policy.description || '',
           status: isSigned ? 'Signed' : 'Pending',
