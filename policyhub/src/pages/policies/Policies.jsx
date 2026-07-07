@@ -73,6 +73,7 @@ function Policies() {
           status: isSigned ? 'Signed' : 'Pending',
           blobUrl: assignment.blobUrl || policy.blobUrl || policy.blobPath || '',
           dueDate: assignment.dueDate || null,
+          assignedDate: assignment.assignedDate || null,
         };
       });
 
@@ -101,28 +102,34 @@ function Policies() {
   const filteredPolicies = useMemo(() => {
     const now = new Date();
 
-    return policies.filter((policy) => {
-      const matchesCategory =
-        categoryFilter === 'All' || policy.category === categoryFilter;
+    return [...policies]
+      .sort((a, b) => {
+        const aDate = a.assignedDate ? new Date(a.assignedDate).getTime() : 0;
+        const bDate = b.assignedDate ? new Date(b.assignedDate).getTime() : 0;
+        return bDate - aDate;
+      })
+      .filter((policy) => {
+        const matchesCategory =
+          categoryFilter === 'All' || policy.category === categoryFilter;
 
-      let matchesStatus = true;
-      if (statusFilter === 'Pending') {
-        matchesStatus = policy.status === 'Pending';
-      } else if (statusFilter === 'Signed') {
-        matchesStatus = policy.status === 'Signed';
-      } else if (statusFilter === 'Overdue') {
-        matchesStatus =
-          policy.status === 'Pending' &&
-          policy.dueDate &&
-          new Date(policy.dueDate) < now;
-      }
+        let matchesStatus = true;
+        if (statusFilter === 'Pending') {
+          matchesStatus = policy.status === 'Pending';
+        } else if (statusFilter === 'Signed') {
+          matchesStatus = policy.status === 'Signed';
+        } else if (statusFilter === 'Overdue') {
+          matchesStatus =
+            policy.status === 'Pending' &&
+            policy.dueDate &&
+            new Date(policy.dueDate) < now;
+        }
 
-      const matchesSearch = policy.name
-        .toLowerCase()
-        .includes(searchText.toLowerCase());
+        const matchesSearch = policy.name
+          .toLowerCase()
+          .includes(searchText.toLowerCase());
 
-      return matchesCategory && matchesStatus && matchesSearch;
-    });
+        return matchesCategory && matchesStatus && matchesSearch;
+      });
   }, [policies, categoryFilter, statusFilter, searchText]);
 
   if (shouldShowAdminPolicies) {

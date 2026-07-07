@@ -87,6 +87,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IPolicyRepository, PolicyRepository>();
 builder.Services.AddScoped<IPolicyAssignmentService, PolicyAssignmentService>();
 builder.Services.AddScoped<BlobService>();
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<IEmailService, EmailService>();
 // builder.Services.AddScoped<UserSyncMiddleware>();
 
 var app = builder.Build();

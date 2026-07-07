@@ -25,7 +25,9 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
-    <PackageReference Include="Microsoft.Identity.Web" Version="2.23.0" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="3.0.0" />
+    <PackageReference Include="Microsoft.Graph" Version="5.78.0" />
+    <PackageReference Include="Azure.Identity" Version="1.15.0" />
   </ItemGroup>
 
 </Project>

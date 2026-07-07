@@ -331,8 +331,12 @@ function Assignments() {
   const [policyError, setPolicyError] = useState('');
   const [userError, setUserError] = useState('');
   const [assignmentError, setAssignmentError] = useState('');
+  const [submissionStatus, setSubmissionStatus] = useState('');
+  const [submissionError, setSubmissionError] = useState('');
   const [selectedPolicies, setSelectedPolicies] = useState([]);
   const [userSearch, setUserSearch] = useState('');
+  const [assignmentSearch, setAssignmentSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [showUserSuggestions, setShowUserSuggestions] = useState(false);
   const [form, setForm] = useState({ policyId: '', userId: '', dueDate: '', isMandatory: true });
 
@@ -405,14 +409,21 @@ function Assignments() {
     }
 
     try {
-      for (const policy of selectedPolicies) {
-        await API.post('/PolicyAssignments', {
-          policyId: Number(policy.policyId),
-          assignedToUserId: Number(form.userId),
-          assignedToDepartmentId: null,
-          dueDate: form.dueDate,
-          isMandatory: form.isMandatory,
-        });
+      setSubmissionStatus('');
+      setSubmissionError('');
+
+      const response = await API.post('/PolicyAssignments/bulk', {
+        policyIds: selectedPolicies.map((policy) => Number(policy.policyId)),
+        assignedToUserId: Number(form.userId),
+        assignedToDepartmentId: null,
+        dueDate: form.dueDate,
+        isMandatory: form.isMandatory,
+      });
+
+      const emailErrors = [];
+      if (response?.data && response.data.success === false) {
+        const emailError = response.data.emailError || response.data.message || 'Email failed to send.';
+        emailErrors.push(emailError);
       }
 
       await loadData();
@@ -420,6 +431,15 @@ function Assignments() {
       setUserSearch('');
       setShowUserSuggestions(false);
       setForm({ policyId: '', userId: '', dueDate: '', isMandatory: true });
+
+      if (emailErrors.length > 0) {
+        const firstError = emailErrors[0];
+        setSubmissionError(`Policy assigned successfully. Email could not be sent. ${firstError}`);
+        alert(`Policy assigned successfully. Email could not be sent. ${firstError}`);
+      } else {
+        setSubmissionStatus('Policy assigned successfully. Email sent successfully.');
+        alert('Policy assigned successfully. Email sent successfully.');
+      }
     } catch (err) {
       console.error('Assignment creation failed', err);
       const response = err?.response;
@@ -433,15 +453,28 @@ function Assignments() {
   };
 
   const assignmentRows = useMemo(() => {
-    return assignments.map((assignment) => ({
-      id: assignment.assignmentId,
-      policyTitle: assignment.policyTitle || assignment.policy?.title || 'Unknown',
-      assignedTo: assignment.assignedToUser || assignment.assignedToUserId || 'Unassigned',
-      dueDate: assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : '-',
-      mandatory: assignment.isMandatory ? 'Yes' : 'No',
-      status: assignment.status || 'Pending',
-    }));
-  }, [assignments]);
+    const filterText = assignmentSearch.trim().toLowerCase();
+
+    return [...assignments]
+      .sort((a, b) => {
+        const aDate = a.assignedDate ? new Date(a.assignedDate).getTime() : 0;
+        const bDate = b.assignedDate ? new Date(b.assignedDate).getTime() : 0;
+        return bDate - aDate;
+      })
+      .map((assignment) => ({
+        id: assignment.assignmentId,
+        policyTitle: assignment.policyTitle || assignment.policy?.title || 'Unknown',
+        assignedTo: assignment.assignedToUser || assignment.assignedToUserId || 'Unassigned',
+        dueDate: assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : '-',
+        mandatory: assignment.isMandatory ? 'Yes' : 'No',
+        status: assignment.status || 'Pending',
+      }))
+      .filter((row) => {
+        const matchesText = !filterText || row.assignedTo.toLowerCase().includes(filterText);
+        const matchesStatus = statusFilter === 'All' || row.status === statusFilter;
+        return matchesText && matchesStatus;
+      });
+  }, [assignments, assignmentSearch, statusFilter]);
 
   return (
     <div className="page-shell">
@@ -455,9 +488,9 @@ function Assignments() {
       <div className="card-grid assignments-grid">
         <div className="card-panel card-panel--medium">
           <div className="section-title">Create Assignment</div>
-          {(policyError || userError || assignmentError) && (
+          {(policyError || userError || assignmentError || submissionStatus || submissionError) && (
             <div className="empty-state form-status">
-              {policyError || userError || assignmentError}
+              {submissionError || submissionStatus || policyError || userError || assignmentError}
             </div>
           )}
           <form onSubmit={handleSubmit} className="form-panel assignment-form">
@@ -517,6 +550,26 @@ function Assignments() {
 
         <div className="table-panel assignments-table-panel">
           <div className="section-title">Current Assignments</div>
+          <div className="filter-area" style={{ marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+            <div className="filter-search" style={{ minWidth: '220px' }}>
+              <label>Search user</label>
+              <input
+                type="text"
+                placeholder="Filter by username"
+                value={assignmentSearch}
+                onChange={(e) => setAssignmentSearch(e.target.value)}
+              />
+            </div>
+            <div className="filter-group" style={{ minWidth: '200px' }}>
+              <label>Status</label>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="All">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Signed">Signed</option>
+                <option value="Overdue">Overdue</option>
+              </select>
+            </div>
+          </div>
           {loading ? (
             <div className="empty-state">Loading assignments…</div>
           ) : (

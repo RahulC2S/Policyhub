@@ -674,8 +674,12 @@ input:focus {
 }
 
 .app-sidebar {
+  position: fixed;
+  left: 0;
+  top: 80px;
   width: 260px;
   min-width: 260px;
+  height: calc(100vh - 80px);
   background: #081020;
   color: #e6eefb;
   display: flex;
@@ -683,6 +687,8 @@ input:focus {
   padding: 1.25rem 0.75rem;
   gap: 1rem;
   transition: width 0.3s ease;
+  overflow-y: auto;
+  z-index: 50;
 }
 
 .app-sidebar.collapsed {
@@ -772,8 +778,14 @@ input:focus {
 
 .app-content {
   flex: 1;
+  margin-left: 260px;
   padding: 1.5rem 2rem;
   min-height: calc(100vh - 80px);
+  transition: margin-left 0.3s ease;
+}
+
+.app-layout.sidebar-collapsed .app-content {
+  margin-left: 80px;
 }
 
 .page-shell,
@@ -2159,6 +2171,193 @@ input:focus {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+/* Categories Component Styles */
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.card-panel--form,
+.card-panel--table {
+  width: 100%;
+}
+
+.category-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.category-form label {
+  display: block;
+  color: #111827;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+}
+
+.category-form input {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease;
+}
+
+.category-form input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.category-form input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.category-form button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.95rem 1.25rem;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9875rem;
+  transition: background 0.2s ease;
+}
+
+.category-form button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.category-form button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.category-form button.loading {
+  opacity: 0.9;
+}
+
+/* Status Messages */
+
+.status-message {
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-message--success {
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+}
+
+.status-message--error {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #7f1d1d;
+}
+
+/* Table Wrapper */
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.categories-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.categories-table thead {
+  background: #f8fafc;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.categories-table th {
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #374151;
+  letter-spacing: 0.3px;
+}
+
+.categories-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s ease;
+}
+
+.categories-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.categories-table td {
+  padding: 0.875rem 1.25rem;
+  font-size: 0.9375rem;
+  color: #111827;
+  vertical-align: middle;
+}
+
+.categories-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Responsive Design */
+
+@media (max-width: 1024px) {
+  .categories-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .categories-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .category-form {
+    gap: 1rem;
+  }
+
+  .card-panel {
+    padding: 1rem;
+  }
+
+  .section-title {
+    font-size: 1.1rem;
+  }
+
+  .categories-table th,
+  .categories-table td {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.85rem;
+  }
 }
 
 .filter-actions button:hover,
