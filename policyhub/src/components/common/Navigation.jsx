@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import ROUTES from '../../routes/paths';
 import { FiMenu, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 
@@ -13,6 +15,7 @@ const Navigation = ({ onToggleSidebar, collapsed }) => {
   const { user, logout, viewPreference, setView } = useAuth();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
+  const navigate = useNavigate();
 
   const roles = user?.roles || [];
   const isSuperAdmin = roles.includes('SuperAdmin');
@@ -33,7 +36,11 @@ const Navigation = ({ onToggleSidebar, collapsed }) => {
   const handleViewSelect = (v) => {
     if (!isAdminUser || v === viewPreference) return;
     if (typeof setView === 'function') setView(v);
+    // close the user menu and navigate to dashboard to refresh main content
+    setOpen(false);
+    navigate(ROUTES.dashboard);
   };
+
 
   return (
     <header className="app-header">

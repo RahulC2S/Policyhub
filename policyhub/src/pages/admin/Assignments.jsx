@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import API from '../../services/api';
+import { showToast } from '../../utils/toast';
 
 function PolicyMultiSelect({
   label,
@@ -333,6 +334,7 @@ function Assignments() {
   const [assignmentError, setAssignmentError] = useState('');
   const [submissionStatus, setSubmissionStatus] = useState('');
   const [submissionError, setSubmissionError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [selectedPolicies, setSelectedPolicies] = useState([]);
   const [userSearch, setUserSearch] = useState('');
   const [assignmentSearch, setAssignmentSearch] = useState('');
@@ -404,11 +406,12 @@ function Assignments() {
     event.preventDefault();
 
     if (selectedPolicies.length === 0 || !form.userId || !form.dueDate) {
-      alert('At least one policy, a user, and a due date are required.');
+      showToast('At least one policy, a user, and a due date are required.', 'warning');
       return;
     }
 
     try {
+      setSubmitting(true);
       setSubmissionStatus('');
       setSubmissionError('');
 
@@ -435,10 +438,10 @@ function Assignments() {
       if (emailErrors.length > 0) {
         const firstError = emailErrors[0];
         setSubmissionError(`Policy assigned successfully. Email could not be sent. ${firstError}`);
-        alert(`Policy assigned successfully. Email could not be sent. ${firstError}`);
+        showToast(`Policy assigned successfully. Email could not be sent. ${firstError}`, 'warning');
       } else {
         setSubmissionStatus('Policy assigned successfully. Email sent successfully.');
-        alert('Policy assigned successfully. Email sent successfully.');
+        showToast('Policy assigned successfully. Email sent successfully.', 'success');
       }
     } catch (err) {
       console.error('Assignment creation failed', err);
@@ -448,7 +451,10 @@ function Assignments() {
           ? response.data
           : JSON.stringify(response.data)
         : err?.message || 'Unable to create assignment.';
-      alert(`Unable to create assignment: ${message}`);
+      showToast(`Unable to create assignment: ${message}`, 'error');
+    }
+    finally {
+      setSubmitting(false);
     }
   };
 
@@ -488,11 +494,7 @@ function Assignments() {
       <div className="card-grid assignments-grid">
         <div className="card-panel card-panel--medium">
           <div className="section-title">Create Assignment</div>
-          {(policyError || userError || assignmentError || submissionStatus || submissionError) && (
-            <div className="empty-state form-status">
-              {submissionError || submissionStatus || policyError || userError || assignmentError}
-            </div>
-          )}
+          {/* Inline status bar removed in favor of non-blocking toasts */}
           <form onSubmit={handleSubmit} className="form-panel assignment-form">
             <PolicyMultiSelect
               label="Policy"
@@ -541,10 +543,17 @@ function Assignments() {
               <span>Mark as mandatory</span>
             </label>
               <div>
-            <button type="submit" className="assignment-form__button">
-              Assign Policies
-            </button>
-            </div>
+              <button type="submit" className="assignment-form__button" disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <span className="btn-spinner" aria-hidden="true"></span>
+                    Assigning...
+                  </>
+                ) : (
+                  'Assign Policies'
+                )}
+              </button>
+              </div>
           </form>
         </div>
 

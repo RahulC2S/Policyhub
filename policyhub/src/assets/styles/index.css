@@ -18,6 +18,22 @@ body {
   background: #f8fafc;
 }
 
+/* Base font size for rem units. Adjust for large screens / high-DPI displays so UI isn't oversized */
+:root {
+  --base-font-size: 16px;
+}
+
+html {
+  font-size: var(--base-font-size);
+}
+
+/* Slightly reduce base size on very wide or high-density displays */
+@media (min-width: 1600px), (min-resolution: 1.5dppx) {
+  :root {
+    --base-font-size: 14px;
+  }
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;

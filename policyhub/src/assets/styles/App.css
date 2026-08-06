@@ -1061,6 +1061,13 @@ input:focus {
   min-height: 3.4rem;
 }
 
+.form-panel input[type="checkbox"] {
+  width: auto;
+  min-height: auto;
+  padding: 0;
+  margin-left: 0.75rem;
+}
+
 .form-panel button {
   background: #2563eb;
   color: white;
@@ -1299,6 +1306,24 @@ input:focus {
   justify-self: end;
   white-space: nowrap;
   align-self: end;
+}
+
+.assignment-form__button[disabled] {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  vertical-align: text-bottom;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-top-color: rgba(255,255,255,0.95);
+  animation: spin 0.9s linear infinite;
 }
 
 @media (max-width: 1200px) {

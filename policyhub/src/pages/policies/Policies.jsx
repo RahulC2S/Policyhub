@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import API from '../../services/api';
+import { showToast } from '../../utils/toast';
 import PolicyTable from '../../components/common/PolicyTable';
 import PolicyModal from '../../components/common/PolicyModal';
 import PoliciesAdmin from '../admin/PoliciesAdmin';
@@ -176,12 +177,12 @@ function Policies() {
     } catch (err) {
       setSigning(false);
       if (err.response?.status === 409) {
-        alert('This policy has already been signed by you.');
+        showToast('This policy has already been signed by you.', 'warning');
         closeModal();
         await fetchAssignedPolicies();
       } else {
         console.error(err);
-        alert('Failed to sign policy. Please try again.');
+        showToast('Failed to sign policy. Please try again.', 'error');
       }
     }
   };

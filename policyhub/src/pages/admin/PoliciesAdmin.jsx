@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { FiEdit, FiTrash2 } from 'react-icons/fi';
 import API from '../../services/api';
+import { showToast } from '../../utils/toast';
 
 function PoliciesAdmin() {
   const [policies, setPolicies] = useState([]);
@@ -37,9 +38,9 @@ function PoliciesAdmin() {
     } catch (err) {
       console.error(err);
       if (err?.response?.status === 401) {
-        alert('Not authorized. Please sign in with an admin account.');
+        showToast('Not authorized. Please sign in with an admin account.', 'error');
       } else {
-        alert('Failed to load admin data. Check console for details.');
+        showToast('Failed to load admin data. Check console for details.', 'error');
       }
     } finally {
       setLoading(false);
@@ -80,7 +81,7 @@ function PoliciesAdmin() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!form.title) {
-      alert('Policy title is required');
+      showToast('Policy title is required', 'warning');
       return;
     }
 
@@ -108,7 +109,7 @@ function PoliciesAdmin() {
       resetForm();
     } catch (error) {
       console.error(error);
-      alert('Unable to save policy.');
+      showToast('Unable to save policy.', 'error');
     }
   };
 
@@ -132,7 +133,7 @@ function PoliciesAdmin() {
       if (selectedPolicy?.policyId === policyId) resetForm();
     } catch (err) {
       console.error(err);
-      alert('Delete failed.');
+      showToast('Delete failed.', 'error');
     }
   };
 
@@ -153,8 +154,8 @@ function PoliciesAdmin() {
         <p>Create, edit, upload, and delete policies for your organization.</p>
       </div>
 
-      <div style={{ display: 'grid', gap: '24px', gridTemplateColumns: '1.4fr 1fr' }}>
-        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 2px 14px rgba(15,23,42,0.08)' }}>
+      <div style={{ display: 'grid', gap: '24px', gridTemplateColumns: 'minmax(380px, 1fr) minmax(520px, 1.4fr)' }}>
+        <div style={{ minWidth: '380px', background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 2px 14px rgba(15,23,42,0.08)' }}>
           <h2>{selectedPolicy ? 'Edit Policy' : 'Create Policy'}</h2>
           <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '16px' }}>
             <label>
@@ -164,7 +165,7 @@ function PoliciesAdmin() {
                 value={form.title}
                 onChange={(e) => handleChange('title', e.target.value)}
                 required
-                style={{ width: '100%', padding: '10px', marginTop: '8px' }}
+                style={{ width: '100%', padding: '10px', marginTop: '8px', boxSizing: 'border-box', maxWidth: '100%' }}
               />
             </label>
 
@@ -174,7 +175,7 @@ function PoliciesAdmin() {
                 value={form.description}
                 onChange={(e) => handleChange('description', e.target.value)}
                 rows={4}
-                style={{ width: '100%', padding: '10px', marginTop: '8px' }}
+                style={{ width: '100%', padding: '10px', marginTop: '8px', boxSizing: 'border-box', maxWidth: '100%', resize: 'vertical' }}
               />
             </label>
 
@@ -183,7 +184,7 @@ function PoliciesAdmin() {
               <select
                 value={form.categoryId ?? ''}
                 onChange={(e) => handleChange('categoryId', e.target.value)}
-                style={{ width: '100%', padding: '10px', marginTop: '8px' }}
+                style={{ width: '100%', padding: '10px', marginTop: '8px', boxSizing: 'border-box', maxWidth: '100%' }}
               >
                 <option value="">Select category</option>
                 {categories.map((category) => (
@@ -210,7 +211,7 @@ function PoliciesAdmin() {
                 type="file"
                 accept="application/pdf"
                 onChange={handleFileChange}
-                style={{ width: '100%', marginTop: '8px' }}
+                style={{ width: '100%', marginTop: '8px', boxSizing: 'border-box', maxWidth: '100%' }}
               />
               {fileUploadStatus && (
                 <div style={{ marginTop: '8px', color: '#334155' }}>{fileUploadStatus}</div>
@@ -239,25 +240,25 @@ function PoliciesAdmin() {
           {loading ? (
             <p>Loading policies…</p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: '1px' }}>
+              <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <thead>
                   <tr>
-                    <th>Id</th>
-                    <th>Title</th>
-                    <th>Category</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th style={{ width: '60px', padding: '14px 18px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', whiteSpace: 'nowrap' }}>Id</th>
+                    <th style={{ minWidth: '420px', padding: '14px 18px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', whiteSpace: 'nowrap' }}>Title</th>
+                    <th style={{ width: '160px', padding: '14px 18px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', whiteSpace: 'nowrap' }}>Category</th>
+                    <th style={{ width: '120px', padding: '14px 18px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', whiteSpace: 'nowrap' }}>Status</th>
+                    <th style={{ width: '120px', padding: '14px 18px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', whiteSpace: 'nowrap' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {policyRows.map((policy) => (
                     <tr key={policy.policyId}>
-                      <td>{policy.policyId}</td>
-                      <td>{policy.title}</td>
-                      <td>{policy.category}</td>
-                      <td>{policy.status}</td>
-                      <td style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <td style={{ padding: '14px 18px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', whiteSpace: 'nowrap' }}>{policy.policyId}</td>
+                      <td style={{ padding: '14px 18px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{policy.title}</td>
+                      <td style={{ padding: '14px 18px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', whiteSpace: 'nowrap' }}>{policy.category}</td>
+                      <td style={{ padding: '14px 18px', borderBottom: '1px solid #e5e7eb', textAlign: 'left', whiteSpace: 'nowrap' }}>{policy.status}</td>
+                      <td style={{ padding: '14px 18px', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: '8px', whiteSpace: 'nowrap' }}>
                         <button type="button" onClick={() => handleEdit(policies.find((item) => item.policyId === policy.policyId))} style={{ padding: '8px', border: 'none', borderRadius: '8px', cursor: 'pointer', background: '#f8fafc' }}>
                           <FiEdit />
                         </button>

@@ -1,4 +1,5 @@
-﻿{
+﻿
+{
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
     "http": {
@@ -6,7 +7,7 @@
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      "applicationUrl": "https://policyhub-dev-epathga6dwabfafq.canadacentral-01.azurewebsites.net",
+      "applicationUrl": "http://localhost:5007",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -16,7 +17,7 @@
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      "applicationUrl": "https://policyhub-dev-epathga6dwabfafq.canadacentral-01.azurewebsites.net",
+      "applicationUrl": "http://localhost:5007",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

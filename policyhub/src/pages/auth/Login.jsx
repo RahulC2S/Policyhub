@@ -87,8 +87,7 @@ const Login = () => {
 
             <div className="terms-box">
               By continuing, you agree to our{' '}
-              <a href="#">Terms of Service</a> and{' '}
-              <a href="#">Privacy Policy</a>.
+              <a href="https://c2stechs.com/privacy-policies/" target="_blank" rel="noopener noreferrer">Terms of Service and Privacy Policy</a>.
             </div>
           </div>
         </section>
